@@ -1,0 +1,168 @@
+{
+  "moves": [
+    {
+      "id": "jab",
+      "name": "Jab",
+      "tts_callout": "Jab!",
+      "category": "punch",
+      "stance_side": "lead",
+      "tier": 1,
+      "landmark_criteria": {
+        "primary_limb": "lead_arm",
+        "elbow_angle_min": 150,
+        "description": "Lead arm extends straight forward, wrist crosses body midline"
+      },
+      "velocity_threshold": 0.012,
+      "detection_window_ms": 1000,
+      "recovery_ms": 400
+    },
+    {
+      "id": "cross",
+      "name": "Cross",
+      "tts_callout": "Cross!",
+      "category": "punch",
+      "stance_side": "rear",
+      "tier": 1,
+      "landmark_criteria": {
+        "primary_limb": "rear_arm",
+        "elbow_angle_min": 150,
+        "shoulder_rotation_min": 10,
+        "description": "Rear arm extends forward with torso rotation, rear shoulder drives forward"
+      },
+      "velocity_threshold": 0.014,
+      "detection_window_ms": 1000,
+      "recovery_ms": 400
+    },
+    {
+      "id": "lead_hook",
+      "name": "Lead Hook",
+      "tts_callout": "Hook!",
+      "category": "punch",
+      "stance_side": "lead",
+      "tier": 1,
+      "landmark_criteria": {
+        "primary_limb": "lead_arm",
+        "elbow_angle_min": 70,
+        "elbow_angle_max": 120,
+        "description": "Lead arm forms hook shape, elbow at 90 degrees, lateral swing"
+      },
+      "velocity_threshold": 0.013,
+      "detection_window_ms": 1000,
+      "recovery_ms": 400
+    },
+    {
+      "id": "rear_hook",
+      "name": "Rear Hook",
+      "tts_callout": "Rear Hook!",
+      "category": "punch",
+      "stance_side": "rear",
+      "tier": 1,
+      "landmark_criteria": {
+        "primary_limb": "rear_arm",
+        "elbow_angle_min": 70,
+        "elbow_angle_max": 120,
+        "description": "Rear arm forms hook shape, lateral swing with hip rotation"
+      },
+      "velocity_threshold": 0.013,
+      "detection_window_ms": 1000,
+      "recovery_ms": 400
+    },
+    {
+      "id": "lead_uppercut",
+      "name": "Lead Uppercut",
+      "tts_callout": "Uppercut!",
+      "category": "punch",
+      "stance_side": "lead",
+      "tier": 1,
+      "landmark_criteria": {
+        "primary_limb": "lead_arm",
+        "wrist_direction": "upward",
+        "description": "Lead wrist drives upward from low position, elbow bent"
+      },
+      "velocity_threshold": 0.012,
+      "detection_window_ms": 1000,
+      "recovery_ms": 400
+    },
+    {
+      "id": "rear_uppercut",
+      "name": "Rear Uppercut",
+      "tts_callout": "Rear Uppercut!",
+      "category": "punch",
+      "stance_side": "rear",
+      "tier": 1,
+      "landmark_criteria": {
+        "primary_limb": "rear_arm",
+        "wrist_direction": "upward",
+        "description": "Rear wrist drives upward with hip dip, elbow bent"
+      },
+      "velocity_threshold": 0.012,
+      "detection_window_ms": 1000,
+      "recovery_ms": 400
+    },
+    {
+      "id": "lead_teep",
+      "name": "Lead Teep",
+      "tts_callout": "Teep!",
+      "category": "kick",
+      "stance_side": "lead",
+      "tier": 1,
+      "landmark_criteria": {
+        "primary_limb": "lead_leg",
+        "ankle_rise_min": 0.15,
+        "knee_extension": true,
+        "description": "Lead leg chambers then extends forward, pushing straight out"
+      },
+      "velocity_threshold": 0.018,
+      "detection_window_ms": 1200,
+      "recovery_ms": 600
+    },
+    {
+      "id": "rear_roundhouse",
+      "name": "Rear Roundhouse",
+      "tts_callout": "Kick!",
+      "category": "kick",
+      "stance_side": "rear",
+      "tier": 1,
+      "landmark_criteria": {
+        "primary_limb": "rear_leg",
+        "ankle_rise_min": 0.1,
+        "lateral_swing": true,
+        "description": "Rear leg sweeps in horizontal arc, hip rotation, shin strikes target"
+      },
+      "velocity_threshold": 0.02,
+      "detection_window_ms": 1200,
+      "recovery_ms": 600
+    },
+    {
+      "id": "high_guard",
+      "name": "High Guard",
+      "tts_callout": "Guard up!",
+      "category": "defense",
+      "stance_side": "either",
+      "tier": 1,
+      "landmark_criteria": {
+        "both_wrists_above_nose": true,
+        "description": "Both fists raised to cheekbone level, elbows in, chin tucked"
+      },
+      "velocity_threshold": 0.008,
+      "detection_window_ms": 800,
+      "recovery_ms": 300
+    },
+    {
+      "id": "check",
+      "name": "Check",
+      "tts_callout": "Check!",
+      "category": "defense",
+      "stance_side": "lead",
+      "tier": 1,
+      "landmark_criteria": {
+        "primary_limb": "lead_leg",
+        "knee_raise_min": 0.12,
+        "description": "Lead shin raises to block incoming kick"
+      },
+      "velocity_threshold": 0.014,
+      "detection_window_ms": 900,
+      "recovery_ms": 400
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="AI-Powered Muay Thai Training Companion with real-time pose detection">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/css/app.css">
+  <title>Nak Muay Trainer</title>
+</head>
+<body>
+  <div id="app">
+
+    <!-- ── LOADING SCREEN ─────────────────────────────── -->
+    <div id="loading-screen" class="screen active">
+      <div class="loading-content">
+        <img src="/assets/icons/icon-192.svg" alt="Nak Muay Trainer" class="app-logo">
+        <h1 class="app-title">Nak Muay Trainer</h1>
+        <p class="app-tagline">AI-Powered Muay Thai Coach</p>
+        <div class="loading-bar-container">
+          <div class="loading-bar" id="loading-bar"></div>
+        </div>
+        <p id="loading-status">Initialising…</p>
+      </div>
+    </div>
+
+    <!-- ── HOME SCREEN ────────────────────────────────── -->
+    <div id="home-screen" class="screen">
+      <!-- Content injected by js/screens/home.js -->
+    </div>
+
+    <!-- ── TRAINING SCREEN ───────────────────────────── -->
+    <div id="training-screen" class="screen">
+
+      <!-- Row 1 (5%): Combo progress bar -->
+      <div id="combo-bar-zone">
+        <!-- Filled dynamically by hud.js -->
+      </div>
+
+      <!-- Row 2 (65%): Camera + canvas layers -->
+      <div id="camera-zone">
+        <video id="camera-feed" playsinline muted autoplay></video>
+        <canvas id="pose-canvas"></canvas>
+        <canvas id="fx-canvas"></canvas>
+
+        <!-- Camera permission prompt -->
+        <div id="camera-prompt">
+          <span class="icon">📷</span>
+          <h2>Camera Access Needed</h2>
+          <p>Nak Muay Trainer uses your front camera to detect your moves in real time. No video is stored or sent anywhere.</p>
+          <button class="allow-camera-btn" id="allow-camera-btn">Allow Camera</button>
+        </div>
+
+        <!-- Countdown overlay -->
+        <div id="countdown-overlay">
+          <span id="countdown-number">3</span>
+        </div>
+
+        <!-- Pause overlay -->
+        <div id="pause-overlay">
+          <h2>Paused</h2>
+          <div class="pause-btn-group">
+            <button class="pause-action-btn resume" id="resume-btn">Resume</button>
+            <button class="pause-action-btn end" id="end-session-btn">End Session</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3 (10%): Score HUD -->
+      <div id="score-zone">
+        <div id="score-display">
+          <span id="score-value">0</span>
+          <span id="streak-display"></span>
+        </div>
+        <div id="timing-feedback"></div>
+        <div><!-- spacer --></div>
+      </div>
+
+      <!-- Row 4 (10%): Timer + controls -->
+      <div id="timer-zone">
+        <span id="round-info">Round 1</span>
+        <span id="round-timer">3:00</span>
+        <button id="pause-btn" aria-label="Pause">⏸</button>
+      </div>
+
+      <!-- Row 5 (10%): Next move preview / current callout -->
+      <div id="next-move-zone">
+        <span class="next-move-label">Next</span>
+        <span id="next-move-name">—</span>
+        <span id="current-callout" class="hidden"></span>
+      </div>
+
+    </div><!-- /training-screen -->
+
+    <!-- ── RESULTS SCREEN ─────────────────────────────── -->
+    <div id="results-screen" class="screen">
+      <!-- Content injected by js/screens/results.js -->
+    </div>
+
+  </div><!-- /app -->
+
+  <!-- Update available toast -->
+  <div id="update-toast">
+    <span>Update available</span>
+    <button id="update-btn">Refresh</button>
+  </div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

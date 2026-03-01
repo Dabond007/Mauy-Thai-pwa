@@ -1,0 +1,67 @@
+{
+  "combos": [
+    {
+      "id": "basic_1_2",
+      "name": "Basic 1-2",
+      "sequence": ["jab", "cross"],
+      "difficulty": 1,
+      "tier": 1,
+      "base_interval_ms": 1000,
+      "tags": ["beginner", "shadow", "heavy_bag"]
+    },
+    {
+      "id": "combo_1_2_3",
+      "name": "1-2-3",
+      "sequence": ["jab", "cross", "lead_hook"],
+      "difficulty": 1,
+      "tier": 1,
+      "base_interval_ms": 1000,
+      "tags": ["beginner", "shadow", "heavy_bag"]
+    },
+    {
+      "id": "combo_1_2_low_kick",
+      "name": "1-2, Kick",
+      "sequence": ["jab", "cross", "rear_roundhouse"],
+      "difficulty": 2,
+      "tier": 1,
+      "base_interval_ms": 1100,
+      "tags": ["beginner", "shadow", "heavy_bag"]
+    },
+    {
+      "id": "combo_1_2_3_2",
+      "name": "1-2-3-2",
+      "sequence": ["jab", "cross", "lead_hook", "cross"],
+      "difficulty": 2,
+      "tier": 1,
+      "base_interval_ms": 1000,
+      "tags": ["beginner", "shadow", "heavy_bag"]
+    },
+    {
+      "id": "combo_1_2_teep",
+      "name": "1-2, Teep",
+      "sequence": ["jab", "cross", "lead_teep"],
+      "difficulty": 2,
+      "tier": 1,
+      "base_interval_ms": 1100,
+      "tags": ["beginner", "shadow"]
+    },
+    {
+      "id": "combo_jab_cross_hook_cross",
+      "name": "Power Combo",
+      "sequence": ["jab", "cross", "lead_hook", "rear_roundhouse"],
+      "difficulty": 2,
+      "tier": 1,
+      "base_interval_ms": 1100,
+      "tags": ["beginner", "shadow", "heavy_bag"]
+    },
+    {
+      "id": "combo_jab_jab_cross",
+      "name": "Double Jab",
+      "sequence": ["jab", "jab", "cross"],
+      "difficulty": 1,
+      "tier": 1,
+      "base_interval_ms": 900,
+      "tags": ["beginner", "shadow", "heavy_bag"]
+    }
+  ]
+}

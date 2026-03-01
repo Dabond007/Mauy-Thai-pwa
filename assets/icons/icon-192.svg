@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="24" fill="#1a1a2e"/>
+  <!-- Thai boxing glove simplified silhouette -->
+  <circle cx="96" cy="72" r="34" fill="#e94560"/>
+  <!-- Glove cuff -->
+  <rect x="72" y="94" width="48" height="22" rx="6" fill="#c73652"/>
+  <!-- Wrist band -->
+  <rect x="70" y="108" width="52" height="10" rx="4" fill="#e94560" opacity="0.7"/>
+  <!-- Text label -->
+  <text x="96" y="158" text-anchor="middle" font-size="22" font-weight="800"
+        fill="#e94560" font-family="system-ui, sans-serif" letter-spacing="2">NAK MUAY</text>
+</svg>
