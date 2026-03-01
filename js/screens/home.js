@@ -169,7 +169,7 @@ export class HomeScreen {
 
   async _loadCombos() {
     try {
-      const res    = await fetch('/data/combos.json');
+      const res    = await fetch('./data/combos.json');
       const data   = await res.json();
       this._combos = data.combos ?? [];
       this._renderComboList();

@@ -1,24 +1,24 @@
 const CACHE_NAME = 'nak-muay-v1';
 
 const APP_ASSETS = [
-  '/index.html',
-  '/manifest.json',
-  '/css/app.css',
-  '/js/app.js',
-  '/js/camera.js',
-  '/js/pose-engine.js',
-  '/js/move-classifier.js',
-  '/js/combo-engine.js',
-  '/js/audio.js',
-  '/js/renderer.js',
-  '/js/hud.js',
-  '/js/screens/home.js',
-  '/js/screens/training.js',
-  '/js/screens/results.js',
-  '/data/moves.json',
-  '/data/combos.json',
-  '/assets/icons/icon-192.svg',
-  '/assets/icons/icon-512.svg'
+  './',
+  './manifest.json',
+  './css/app.css',
+  './js/app.js',
+  './js/camera.js',
+  './js/pose-engine.js',
+  './js/move-classifier.js',
+  './js/combo-engine.js',
+  './js/audio.js',
+  './js/renderer.js',
+  './js/hud.js',
+  './js/screens/home.js',
+  './js/screens/training.js',
+  './js/screens/results.js',
+  './data/moves.json',
+  './data/combos.json',
+  './assets/icons/icon-192.svg',
+  './assets/icons/icon-512.svg'
 ];
 
 // MediaPipe CDN resources to cache
@@ -58,7 +58,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Cache-first for app assets
+  // Cache-first for same-origin assets
   if (url.origin === self.location.origin) {
     event.respondWith(cacheFirst(event.request));
     return;
@@ -99,7 +99,6 @@ async function staleWhileRevalidate(request) {
   return cached || fetchPromise;
 }
 
-// Notify clients of new service worker
 self.addEventListener('message', event => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });

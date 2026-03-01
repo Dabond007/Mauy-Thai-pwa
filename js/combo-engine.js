@@ -69,8 +69,8 @@ export class ComboEngine {
 
   async loadCombos() {
     const [movesRes, combosRes] = await Promise.all([
-      fetch('/data/moves.json'),
-      fetch('/data/combos.json'),
+      fetch('./data/moves.json'),
+      fetch('./data/combos.json'),
     ]);
     const movesData  = await movesRes.json();
     const combosData = await combosRes.json();

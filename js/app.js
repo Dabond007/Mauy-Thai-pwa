@@ -78,8 +78,8 @@ async function boot() {
     setProgress(15, 'Loading move data…');
     // Data is loaded by individual modules; just warm up fetch cache here.
     await Promise.all([
-      fetch('/data/moves.json'),
-      fetch('/data/combos.json'),
+      fetch('./data/moves.json'),
+      fetch('./data/combos.json'),
     ]);
 
     setProgress(30, 'Initialising audio…');
@@ -135,7 +135,7 @@ async function boot() {
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js');
+    const reg = await navigator.serviceWorker.register('./sw.js');
 
     reg.addEventListener('updatefound', () => {
       const newWorker = reg.installing;
