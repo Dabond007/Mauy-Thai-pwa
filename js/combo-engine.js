@@ -43,6 +43,12 @@ const SPEED_MULTIPLIERS = {
 // Fallback TTS latency offset (ms) used if onstart callback never fires
 const TTS_LATENCY_FALLBACK_MS = 200;
 
+// Adaptive TTS rate settings
+const TTS_RATE_MIN   = 1.0;  // slow and clear when struggling
+const TTS_RATE_MAX   = 2.0;  // snappy when crushing it
+const TTS_RATE_BASE  = 1.3;  // default starting rate
+const TTS_RATE_WINDOW = 6;   // rolling window of recent results for adaptation
+
 export class ComboEngine {
   constructor(bus) {
     this._bus    = bus;
@@ -76,6 +82,10 @@ export class ComboEngine {
     this._sessionHits    = 0;
     this._sessionMisses  = 0;
     this._roundScores    = [];
+
+    // Adaptive TTS rate — rolling window of recent hit/miss booleans
+    this._recentResults  = [];  // last N results: true = hit, false = miss
+    this._currentTTSRate = TTS_RATE_BASE;
 
     // Subscribe to move detection results
     bus.on('classifier:result', data => this._onClassifierResult(data));
@@ -124,6 +134,8 @@ export class ComboEngine {
     this._sessionHits   = 0;
     this._sessionMisses = 0;
     this._roundScores   = [];
+    this._recentResults = [];
+    this._currentTTSRate = TTS_RATE_BASE;
     this._paused        = false;
 
     this._startNextRound();
@@ -391,6 +403,35 @@ export class ComboEngine {
     } else {
       this._bus.emit('combo:miss', { moveId, totalScore: this._totalScore });
     }
+
+    // Adaptive TTS rate — adjust based on rolling hit/miss window
+    this._recentResults.push(hit);
+    if (this._recentResults.length > TTS_RATE_WINDOW) {
+      this._recentResults.shift();
+    }
+    this._updateTTSRate();
+  }
+
+  /**
+   * Compute adaptive TTS rate from recent performance.
+   * High hit rate → faster callouts (snappier).
+   * Low hit rate  → slower callouts (clearer, more time to think).
+   */
+  _updateTTSRate() {
+    if (this._recentResults.length < 3) return; // need a few results first
+
+    const hits = this._recentResults.filter(Boolean).length;
+    const hitRate = hits / this._recentResults.length;
+
+    // Linear interpolation: 0% hits → TTS_RATE_MIN, 100% hits → TTS_RATE_MAX
+    const newRate = TTS_RATE_MIN + (TTS_RATE_MAX - TTS_RATE_MIN) * hitRate;
+
+    // Smooth the transition (don't jump wildly between rates)
+    this._currentTTSRate = this._currentTTSRate * 0.6 + newRate * 0.4;
+    // Clamp
+    this._currentTTSRate = Math.max(TTS_RATE_MIN, Math.min(TTS_RATE_MAX, this._currentTTSRate));
+
+    this._bus.emit('combo:ttsRateAdjust', { rate: this._currentTTSRate });
   }
 
   // ── Pause / resume ────────────────────────────────────────

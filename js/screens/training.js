@@ -175,6 +175,11 @@ export class TrainingScreen {
       this._vibrate([5, 5]);
     }));
 
+    // Adaptive TTS rate — speed up voice when hitting, slow down when missing
+    us.push(b.on('combo:ttsRateAdjust', ({ rate }) => {
+      this._audio.rate = rate;
+    }));
+
     // Combo complete
     us.push(b.on('combo:complete', () => {
       this._audio.playComboComplete();

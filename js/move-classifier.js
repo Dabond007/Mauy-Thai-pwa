@@ -38,10 +38,10 @@ const LM = {
 };
 
 // Stance check cooldown — minimum ms between stance alerts
-const STANCE_CHECK_COOLDOWN_MS = 3000;
+const STANCE_CHECK_COOLDOWN_MS = 4000;
 
-// Number of consecutive bad-stance frames before alerting
-const STANCE_BAD_FRAMES_THRESHOLD = 8;
+// Number of consecutive bad-stance frames before alerting (~500ms at 30fps)
+const STANCE_BAD_FRAMES_THRESHOLD = 15;
 
 export class MoveClassifier {
   /**
@@ -182,9 +182,10 @@ export class MoveClassifier {
 
     if (!visible(nose, lWrist, rWrist)) return null;
 
-    // Wrists should be roughly at or above chin level (nose.y + small offset).
+    // Wrists should be roughly at chin level or above. In a proper Muay Thai
+    // guard the hands are at chin height, which is well below the nose.
     // In normalized coords, lower y = higher on screen.
-    const guardThreshold = nose.y + 0.10; // allow wrists to be slightly below nose
+    const guardThreshold = nose.y + 0.22; // chin level ≈ nose + ~20% of frame
     const leadDown = lWrist.y > guardThreshold;
     const rearDown = rWrist.y > guardThreshold;
 
@@ -241,8 +242,9 @@ export class MoveClassifier {
 
     const dx = Math.abs(leadAnkle.x - rearAnkle.x);
 
-    // Feet too close together (less than ~5% of frame width)
-    if (dx < 0.05) return 'stance_too_narrow';
+    // Feet too close together. A bladed Muay Thai stance looks narrow from
+    // the front camera, so only flag when feet are nearly touching (~3%).
+    if (dx < 0.03) return 'stance_too_narrow';
 
     return null;
   }
