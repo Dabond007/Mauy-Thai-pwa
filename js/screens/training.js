@@ -52,6 +52,7 @@ export class TrainingScreen {
     this._paused         = false;
     this._config         = null;
     this._unsubscribers  = [];
+    this._announcing     = false;  // true while TTS is announcing a combo
 
     this._bindStaticEvents();
   }
@@ -124,7 +125,11 @@ export class TrainingScreen {
       const stanceResult = this._moveClassifier.checkStance(data);
       if (stanceResult.alert) {
         this._hud.showStanceAlert(stanceResult.alert);
-        this._audio.speak(stanceResult.alert);
+        // Only speak stance alerts if not currently announcing a combo
+        // (speak() cancels in-flight TTS which would break the combo flow)
+        if (!this._announcing) {
+          this._audio.speak(stanceResult.alert);
+        }
         this._vibrate([10, 30, 10]);
       }
 
@@ -136,11 +141,28 @@ export class TrainingScreen {
       this._renderer.drawPose(data.landmarks, active);
     }));
 
-    // Callout → TTS + HUD
-    us.push(b.on('combo:callout', ({ moveId, moveName, ttsCallout, sequence, moveIndex }) => {
-      this._audio.speak(ttsCallout, (ttsStartTime) => {
-        b.emit('combo:ttsStarted', { timestamp: ttsStartTime });
-      });
+    // Combo announce → TTS speaks the full combo, then signals completion
+    us.push(b.on('combo:announce', ({ text, comboName }) => {
+      this._announcing = true;
+      this._hud.showCallout(comboName);
+      this._audio.speak(
+        text,
+        null,
+        () => {
+          this._announcing = false;
+          b.emit('combo:announceComplete');
+        },
+      );
+    }));
+
+    // "Go" beep after TTS finishes, before move tracking starts
+    us.push(b.on('combo:go', () => {
+      this._audio.playGoBeep();
+    }));
+
+    // Individual move callout → tone ping + HUD (NO TTS — already announced)
+    us.push(b.on('combo:callout', ({ moveId, moveName, sequence, moveIndex }) => {
+      this._audio.playMovePing();
       this._hud.showCallout(moveName);
       // Show next move (peek ahead)
       const seqArr = sequence ?? [];

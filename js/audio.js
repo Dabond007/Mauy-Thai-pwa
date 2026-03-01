@@ -55,9 +55,13 @@ export class AudioManager {
    * Speak text via TTS.
    * @param {string} text
    * @param {function} [onStart] Called with performance.now() timestamp when TTS begins
+   * @param {function} [onEnd]   Called when TTS finishes speaking
    */
-  speak(text, onStart) {
-    if (!this.ttsEnabled || !text) return;
+  speak(text, onStart, onEnd) {
+    if (!this.ttsEnabled || !text) {
+      onEnd?.();
+      return;
+    }
     this._synth.cancel(); // interrupt any in-flight utterance
     const utter = new SpeechSynthesisUtterance(text);
     utter.voice  = this._voice;
@@ -66,6 +70,9 @@ export class AudioManager {
     utter.volume = this.volume;
     if (onStart) {
       utter.onstart = () => onStart(performance.now());
+    }
+    if (onEnd) {
+      utter.onend = () => onEnd();
     }
     this._synth.speak(utter);
   }
@@ -130,6 +137,16 @@ export class AudioManager {
   }
 
   // ── Named sound events ─────────────────────────────────────
+
+  /** Short timing ping for individual move cues during a combo. */
+  playMovePing() {
+    this.playTone(900, 0.06, 'sine', 0.35);
+  }
+
+  /** Start-of-combo beep after TTS announcement. */
+  playGoBeep() {
+    this.playTone(1100, 0.15, 'sine', 0.45);
+  }
 
   /** 3-2-1 countdown beeps. */
   playCountdown() {

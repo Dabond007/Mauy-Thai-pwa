@@ -61,6 +61,7 @@ export class MoveClassifier {
 
     // Stance checking state
     this._stanceCheckEnabled   = true;
+    this._comboActive          = false;  // true during combo execution
     this._lastStanceAlertTime  = 0;
     this._badStanceFrames      = 0;
     this._lastStanceIssues     = [];
@@ -73,6 +74,17 @@ export class MoveClassifier {
     bus.on('combo:windowClose', () => {
       this._windowOpen     = false;
       this._expectedMoveId = null;
+    });
+
+    // Track when combos are active (for stance guard checking).
+    // Start on combo:start (includes the TTS announce phase) so
+    // guard checks don't fire while the user listens to the callout.
+    bus.on('combo:start', () => {
+      this._comboActive = true;
+    });
+
+    bus.on('combo:complete', () => {
+      this._comboActive = false;
     });
   }
 
@@ -136,22 +148,18 @@ export class MoveClassifier {
     const idx = this._stanceIndices();
     const issues = [];
 
-    // Skip checks during active move execution (classifier window is open)
-    if (this._windowOpen) {
-      this._badStanceFrames = 0;
-      return { issues: [], alert: null };
+    // Guard check — only between combos. During a combo the user is
+    // throwing punches so their hands will naturally be extended.
+    if (!this._comboActive) {
+      const guardIssue = this._checkGuard(landmarks, idx);
+      if (guardIssue) issues.push(guardIssue);
     }
 
-    // 1. Guard check — both wrists should be near chin/face level
-    const guardIssue = this._checkGuard(landmarks, idx);
-    if (guardIssue) issues.push(guardIssue);
-
-    // 2. Foot position — lead ankle should be forward (lower x in raw
-    //    MediaPipe space for orthodox front-facing camera)
+    // Foot position and stance width — always check, even during combos.
+    // Feet don't move much during punches so these are reliable.
     const footIssue = this._checkFootPosition(landmarks, idx);
     if (footIssue) issues.push(footIssue);
 
-    // 3. Stance width — feet shouldn't be too close together
     const widthIssue = this._checkStanceWidth(landmarks, idx);
     if (widthIssue) issues.push(widthIssue);
 
