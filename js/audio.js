@@ -54,8 +54,9 @@ export class AudioManager {
   /**
    * Speak text via TTS.
    * @param {string} text
+   * @param {function} [onStart] Called with performance.now() timestamp when TTS begins
    */
-  speak(text) {
+  speak(text, onStart) {
     if (!this.ttsEnabled || !text) return;
     this._synth.cancel(); // interrupt any in-flight utterance
     const utter = new SpeechSynthesisUtterance(text);
@@ -63,6 +64,9 @@ export class AudioManager {
     utter.rate   = this.rate;
     utter.pitch  = this.pitch;
     utter.volume = this.volume;
+    if (onStart) {
+      utter.onstart = () => onStart(performance.now());
+    }
     this._synth.speak(utter);
   }
 

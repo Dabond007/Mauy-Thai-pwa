@@ -37,6 +37,12 @@ const LM = {
   L_ANKLE:       27,  R_ANKLE:       28,
 };
 
+// Stance check cooldown — minimum ms between stance alerts
+const STANCE_CHECK_COOLDOWN_MS = 3000;
+
+// Number of consecutive bad-stance frames before alerting
+const STANCE_BAD_FRAMES_THRESHOLD = 8;
+
 export class MoveClassifier {
   /**
    * @param {EventBus} bus
@@ -53,6 +59,12 @@ export class MoveClassifier {
     // Baseline y positions for anchor calculations (set from first frames)
     this._baselineHipY   = null;
 
+    // Stance checking state
+    this._stanceCheckEnabled   = true;
+    this._lastStanceAlertTime  = 0;
+    this._badStanceFrames      = 0;
+    this._lastStanceIssues     = [];
+
     bus.on('combo:callout', ({ moveId }) => {
       this._expectedMoveId = moveId;
       this._windowOpen     = true;
@@ -67,6 +79,11 @@ export class MoveClassifier {
   /** Set stance (called from settings or auto-detection). */
   setStance(stance) {
     this._stance = stance;
+  }
+
+  /** Enable or disable stance checking. */
+  setStanceCheckEnabled(enabled) {
+    this._stanceCheckEnabled = enabled;
   }
 
   /**
@@ -93,6 +110,156 @@ export class MoveClassifier {
       return result;
     }
     return null;
+  }
+
+  // ── Stance checking ─────────────────────────────────────────
+
+  /**
+   * Check the user's stance quality. Should be called every frame during
+   * training (even between move detections). Returns an array of issues,
+   * or an empty array if stance looks good.
+   *
+   * Checks performed:
+   *   1. Guard position — are hands up near face?
+   *   2. Foot position — is the correct foot forward for the declared stance?
+   *   3. Stance width — are feet a reasonable distance apart?
+   *
+   * @param {{ landmarks, velocities, timestamp }} poseData
+   * @returns {{ issues: string[], alert: string|null }}
+   *   issues: list of all current problems (for HUD display)
+   *   alert:  a single TTS-speakable alert, or null if no alert is due
+   */
+  checkStance(poseData) {
+    if (!this._stanceCheckEnabled) return { issues: [], alert: null };
+
+    const { landmarks, timestamp } = poseData;
+    const idx = this._stanceIndices();
+    const issues = [];
+
+    // Skip checks during active move execution (classifier window is open)
+    if (this._windowOpen) {
+      this._badStanceFrames = 0;
+      return { issues: [], alert: null };
+    }
+
+    // 1. Guard check — both wrists should be near chin/face level
+    const guardIssue = this._checkGuard(landmarks, idx);
+    if (guardIssue) issues.push(guardIssue);
+
+    // 2. Foot position — lead ankle should be forward (lower x in raw
+    //    MediaPipe space for orthodox front-facing camera)
+    const footIssue = this._checkFootPosition(landmarks, idx);
+    if (footIssue) issues.push(footIssue);
+
+    // 3. Stance width — feet shouldn't be too close together
+    const widthIssue = this._checkStanceWidth(landmarks, idx);
+    if (widthIssue) issues.push(widthIssue);
+
+    // Decide whether to alert
+    let alert = null;
+    if (issues.length > 0) {
+      this._badStanceFrames++;
+      if (this._badStanceFrames >= STANCE_BAD_FRAMES_THRESHOLD) {
+        const now = timestamp ?? performance.now();
+        if (now - this._lastStanceAlertTime > STANCE_CHECK_COOLDOWN_MS) {
+          this._lastStanceAlertTime = now;
+          // Pick the most important issue to speak
+          alert = this._pickAlertMessage(issues);
+        }
+      }
+    } else {
+      this._badStanceFrames = 0;
+    }
+
+    this._lastStanceIssues = issues;
+    return { issues, alert };
+  }
+
+  _checkGuard(lm, idx) {
+    const nose   = lm[LM.NOSE];
+    const lWrist = lm[idx.leadWrist];
+    const rWrist = lm[idx.rearWrist];
+
+    if (!visible(nose, lWrist, rWrist)) return null;
+
+    // Wrists should be roughly at or above chin level (nose.y + small offset).
+    // In normalized coords, lower y = higher on screen.
+    const guardThreshold = nose.y + 0.10; // allow wrists to be slightly below nose
+    const leadDown = lWrist.y > guardThreshold;
+    const rearDown = rWrist.y > guardThreshold;
+
+    if (leadDown && rearDown) return 'hands_down';
+    if (leadDown) return 'lead_hand_down';
+    if (rearDown) return 'rear_hand_down';
+    return null;
+  }
+
+  _checkFootPosition(lm, idx) {
+    const leadAnkle = lm[idx.leadAnkle];
+    const rearAnkle = lm[idx.rearAnkle];
+
+    if (!visible(leadAnkle, rearAnkle)) return null;
+
+    // In a proper stance, lead foot is forward.
+    // For a front-facing mirrored camera:
+    //   "Forward" in the room = closer to camera = larger Y value
+    //   But also the feet should show the correct left/right positioning.
+    // We primarily check that the lead hip is forward of the rear hip
+    // (y position: in normalized coords this means lead hip has higher y
+    //  if the person is bladed toward the camera, but this varies).
+    // More reliable: check ankle x-spread matches expected stance.
+    // For orthodox (left foot forward) with mirrored front camera:
+    //   Lead ankle (MediaPipe right = index 28) should have lower x in raw space
+    //   because it's the user's left foot which appears on the right side of the
+    //   mirrored display, but in RAW (unmirrored) space it has lower x.
+    // Actually the simplest check: lead ankle should NOT be behind rear ankle
+    // in the z-axis. But z from MediaPipe is noisy. Let's use a combined check:
+    // Lead hip should be at least slightly in front (lower z or different x position).
+
+    // Simplified: check that lead and rear ankles aren't swapped in x-position
+    // (which would indicate the wrong foot is forward).
+    const leadX = leadAnkle.x;
+    const rearX = rearAnkle.x;
+
+    // For orthodox: lead = MP right indices (lower x), rear = MP left (higher x)
+    // So lead.x should be < rear.x in raw coords
+    // For southpaw: lead = MP left (higher x), rear = MP right (lower x)
+    // So lead.x should be > rear.x in raw coords
+    const isOrthodox = this._stance === 'orthodox';
+    const wrongFoot = isOrthodox
+      ? (leadX > rearX + 0.05)  // lead should have lower x
+      : (leadX < rearX - 0.05); // lead should have higher x
+
+    return wrongFoot ? 'wrong_foot_forward' : null;
+  }
+
+  _checkStanceWidth(lm, idx) {
+    const leadAnkle = lm[idx.leadAnkle];
+    const rearAnkle = lm[idx.rearAnkle];
+
+    if (!visible(leadAnkle, rearAnkle)) return null;
+
+    const dx = Math.abs(leadAnkle.x - rearAnkle.x);
+
+    // Feet too close together (less than ~5% of frame width)
+    if (dx < 0.05) return 'stance_too_narrow';
+
+    return null;
+  }
+
+  /**
+   * Pick the most important stance issue to speak as a TTS alert.
+   * @param {string[]} issues
+   * @returns {string}
+   */
+  _pickAlertMessage(issues) {
+    // Priority order
+    if (issues.includes('hands_down'))         return 'Hands up!';
+    if (issues.includes('lead_hand_down'))      return 'Lead hand up!';
+    if (issues.includes('rear_hand_down'))      return 'Rear hand up!';
+    if (issues.includes('wrong_foot_forward'))  return 'Check your stance!';
+    if (issues.includes('stance_too_narrow'))   return 'Widen your stance!';
+    return 'Fix your stance!';
   }
 
   // ── Stance index mapping ──────────────────────────────────

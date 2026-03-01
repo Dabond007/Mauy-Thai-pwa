@@ -113,12 +113,21 @@ export class TrainingScreen {
     const b  = this._bus;
     const us = this._unsubscribers;
 
-    // Pose → classifier
+    // Pose → classifier + stance checker
     us.push(b.on('pose:landmarks', data => {
       const result = this._moveClassifier.classify(data);
       if (result) {
         b.emit('classifier:result', { ...result, detectionTime: performance.now() });
       }
+
+      // Check stance quality (runs every frame, internally throttled)
+      const stanceResult = this._moveClassifier.checkStance(data);
+      if (stanceResult.alert) {
+        this._hud.showStanceAlert(stanceResult.alert);
+        this._audio.speak(stanceResult.alert);
+        this._vibrate([10, 30, 10]);
+      }
+
       // Render pose overlay
       const active = Renderer.activeLandmarksForMove(
         this._moveClassifier._expectedMoveId ?? '',
@@ -129,7 +138,9 @@ export class TrainingScreen {
 
     // Callout → TTS + HUD
     us.push(b.on('combo:callout', ({ moveId, moveName, ttsCallout, sequence, moveIndex }) => {
-      this._audio.speak(ttsCallout);
+      this._audio.speak(ttsCallout, (ttsStartTime) => {
+        b.emit('combo:ttsStarted', { timestamp: ttsStartTime });
+      });
       this._hud.showCallout(moveName);
       // Show next move (peek ahead)
       const seqArr = sequence ?? [];

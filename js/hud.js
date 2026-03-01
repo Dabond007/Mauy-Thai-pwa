@@ -17,8 +17,10 @@ export class HUD {
     this._roundTimer      = document.getElementById('round-timer');
     this._nextMoveName    = document.getElementById('next-move-name');
     this._currentCallout  = document.getElementById('current-callout');
+    this._stanceAlert     = document.getElementById('stance-alert');
 
-    this._feedbackTimer = null;
+    this._feedbackTimer    = null;
+    this._stanceAlertTimer = null;
   }
 
   // ── Combo bar ──────────────────────────────────────────────
@@ -132,6 +134,33 @@ export class HUD {
     }, 600);
   }
 
+  // ── Stance alert ──────────────────────────────────────────
+
+  /**
+   * Show a stance correction warning overlaid on the camera zone.
+   * Auto-hides after 2 seconds.
+   * @param {string} message  Short text like "Hands up!" or "Widen your stance!"
+   */
+  showStanceAlert(message) {
+    if (!this._stanceAlert) return;
+    clearTimeout(this._stanceAlertTimer);
+    this._stanceAlert.textContent = message;
+    this._stanceAlert.classList.remove('hidden');
+    // Re-trigger animation
+    this._stanceAlert.style.animation = 'none';
+    this._stanceAlert.offsetWidth; // reflow
+    this._stanceAlert.style.animation = '';
+    this._stanceAlertTimer = setTimeout(() => {
+      this._stanceAlert.classList.add('hidden');
+    }, 2000);
+  }
+
+  hideStanceAlert() {
+    if (!this._stanceAlert) return;
+    clearTimeout(this._stanceAlertTimer);
+    this._stanceAlert.classList.add('hidden');
+  }
+
   // ── Misc ───────────────────────────────────────────────────
 
   reset() {
@@ -141,5 +170,6 @@ export class HUD {
     this.setNextMove(null);
     this._timingFeedback.textContent = '';
     this.clearComboBar();
+    this.hideStanceAlert();
   }
 }

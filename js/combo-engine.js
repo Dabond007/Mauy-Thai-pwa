@@ -4,6 +4,12 @@
  * Manages the sequence of move callouts within a training session.
  * Controls timing, tracks hits/misses, and emits scoring events.
  *
+ * Timing model:
+ *   The scoring timer starts when TTS actually begins speaking (via
+ *   combo:ttsStarted), NOT when the event fires. This compensates for
+ *   the variable latency of the Web Speech API on mobile devices.
+ *   A fallback offset is used if the TTS start callback never fires.
+ *
  * Session flow:
  *   startSession(config) → [countdown] → startRound()
  *     → for each combo: callout moves at intervals
@@ -23,6 +29,7 @@
  *
  * Events consumed:
  *   pose:landmarks  (routed via MoveClassifier → 'classifier:result')
+ *   combo:ttsStarted  { timestamp }  — actual TTS start time
  *   session:pause / session:resume
  */
 
@@ -32,6 +39,9 @@ const SPEED_MULTIPLIERS = {
   fast:   0.7,
   elite:  0.5,
 };
+
+// Fallback TTS latency offset (ms) used if onstart callback never fires
+const TTS_LATENCY_FALLBACK_MS = 200;
 
 export class ComboEngine {
   constructor(bus) {
@@ -53,6 +63,12 @@ export class ComboEngine {
     this._comboHits      = 0;
     this._comboMisses    = 0;
 
+    // Per-move state
+    this._currentCalloutTime = 0;
+    this._currentMoveId      = null;
+    this._currentMoveDef     = null;
+    this._currentMoveScored  = false;  // whether current move already scored
+
     // Cumulative session stats
     this._totalScore     = 0;
     this._streak         = 0;
@@ -63,6 +79,7 @@ export class ComboEngine {
 
     // Subscribe to move detection results
     bus.on('classifier:result', data => this._onClassifierResult(data));
+    bus.on('combo:ttsStarted', ({ timestamp }) => this._onTTSStarted(timestamp));
     bus.on('session:pause',  () => this._pause());
     bus.on('session:resume', () => this._resume());
   }
@@ -102,6 +119,7 @@ export class ComboEngine {
 
     this._totalScore    = 0;
     this._streak        = 0;
+    this._bestStreak    = 0;
     this._ratings       = { perfect: 0, great: 0, good: 0, miss: 0 };
     this._sessionHits   = 0;
     this._sessionMisses = 0;
@@ -148,6 +166,8 @@ export class ComboEngine {
   }
 
   _endRound() {
+    // Score any pending unscored move as a miss
+    this._finalizePendingMove();
     this._clearCalloutTimers();
     const roundScore = this._totalScore - this._roundStartScore;
     this._roundScores.push(roundScore);
@@ -219,6 +239,9 @@ export class ComboEngine {
       return;
     }
 
+    // Score any pending unscored move from the previous callout as a miss
+    this._finalizePendingMove();
+
     const moveId   = combo.sequence[this._moveIndex];
     const moveDef  = this._moves[moveId];
     if (!moveDef) {
@@ -240,23 +263,45 @@ export class ComboEngine {
       moveIndex:   this._moveIndex,
     });
 
-    // Open timing window
+    // The detection window starts at calloutTime but will be adjusted forward
+    // when we receive combo:ttsStarted with the actual TTS start timestamp.
+    // Use calloutTime + fallback as initial value in case onstart never fires.
     const windowMs = (moveDef.detection_window_ms ?? 1000) * this._session.speedMult;
-    this._currentCalloutTime = calloutTime;
+    this._currentCalloutTime = calloutTime + TTS_LATENCY_FALLBACK_MS;
     this._currentMoveId      = moveId;
     this._currentMoveDef     = moveDef;
+    this._currentMoveScored  = false;
+    this._ttsStartReceived   = false;
 
-    // Close window if no detection
+    // Close window if no detection — add the TTS latency fallback so
+    // the user gets the full detection window AFTER hearing the callout
+    clearTimeout(this._windowTimer);
     this._windowTimer = setTimeout(() => {
-      this._bus.emit('combo:windowClose');
-      this._recordResult(false, moveId, null);
-    }, windowMs);
+      if (!this._currentMoveScored) {
+        this._bus.emit('combo:windowClose');
+        this._recordResult(false, moveId, null);
+      }
+    }, windowMs + TTS_LATENCY_FALLBACK_MS);
 
-    // Schedule next callout
+    // Schedule next callout — add TTS latency so user gets full interval
+    // between hearing one callout and hearing the next
+    clearTimeout(this._calloutTimer);
     this._calloutTimer = setTimeout(() => {
       this._moveIndex++;
       this._calloutNextMove();
-    }, interval);
+    }, interval + TTS_LATENCY_FALLBACK_MS);
+  }
+
+  /**
+   * If there is a pending unscored move, record it as a miss and close its window.
+   * Called before advancing to the next move or ending the round.
+   */
+  _finalizePendingMove() {
+    if (this._currentMoveId && !this._currentMoveScored) {
+      clearTimeout(this._windowTimer);
+      this._bus.emit('combo:windowClose');
+      this._recordResult(false, this._currentMoveId, null);
+    }
   }
 
   _onComboComplete() {
@@ -266,17 +311,31 @@ export class ComboEngine {
       misses:  this._comboMisses,
     });
 
-    // Short rest between combos (200ms * speed)
+    // Short rest between combos (1200ms * speed)
     const rest = 1200 * this._session.speedMult;
     setTimeout(() => {
       if (!this._paused) this._nextCombo();
     }, rest);
   }
 
+  // ── TTS timing ──────────────────────────────────────────────
+
+  /**
+   * Called when TTS actually begins speaking. Updates the scoring
+   * baseline so that timing accuracy is measured from when the user
+   * HEARS the callout, not when the event was emitted.
+   */
+  _onTTSStarted(timestamp) {
+    if (this._ttsStartReceived || this._currentMoveScored) return;
+    this._ttsStartReceived = true;
+    this._currentCalloutTime = timestamp;
+  }
+
   // ── Scoring ───────────────────────────────────────────────
 
   _onClassifierResult({ detected, moveId, confidence, detectionTime }) {
     if (!detected || moveId !== this._currentMoveId) return;
+    if (this._currentMoveScored) return;
 
     // Clear the miss timer
     clearTimeout(this._windowTimer);
@@ -286,17 +345,23 @@ export class ComboEngine {
   }
 
   _recordResult(hit, moveId, detectionTime) {
+    // Guard against double-scoring
+    if (this._currentMoveScored && moveId === this._currentMoveId) return;
+    this._currentMoveScored = true;
+
     let rating = 'miss';
     let points = 0;
 
     if (hit) {
       const delta = detectionTime != null
-        ? detectionTime - this._currentCalloutTime
+        ? Math.max(0, detectionTime - this._currentCalloutTime)
         : 999;
 
-      if (delta < 150)      { rating = 'perfect'; points = 100; }
-      else if (delta < 350) { rating = 'great';   points = 75;  }
-      else                  { rating = 'good';    points = 50;  }
+      // Scoring thresholds per spec:
+      //   Perfect: within ±100ms, Great: within ±250ms, Good: within window
+      if (delta <= 100)      { rating = 'perfect'; points = 100; }
+      else if (delta <= 250) { rating = 'great';   points = 75;  }
+      else                   { rating = 'good';    points = 50;  }
 
       this._streak++;
       this._bestStreak = Math.max(this._bestStreak ?? 0, this._streak);
