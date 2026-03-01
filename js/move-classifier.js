@@ -148,15 +148,13 @@ export class MoveClassifier {
     const idx = this._stanceIndices();
     const issues = [];
 
-    // Guard check — only between combos. During a combo the user is
-    // throwing punches so their hands will naturally be extended.
-    if (!this._comboActive) {
-      const guardIssue = this._checkGuard(landmarks, idx);
-      if (guardIssue) issues.push(guardIssue);
-    }
+    // Guard check — always runs, but during an active move window we
+    // only check the non-striking hand (the striking hand is extended
+    // by definition). Between moves/combos, check both hands.
+    const guardIssue = this._checkGuard(landmarks, idx, this._windowOpen ? this._expectedMoveId : null);
+    if (guardIssue) issues.push(guardIssue);
 
-    // Foot position and stance width — always check, even during combos.
-    // Feet don't move much during punches so these are reliable.
+    // Foot position and stance width — always check.
     const footIssue = this._checkFootPosition(landmarks, idx);
     if (footIssue) issues.push(footIssue);
 
@@ -183,24 +181,43 @@ export class MoveClassifier {
     return { issues, alert };
   }
 
-  _checkGuard(lm, idx) {
+  /**
+   * Check guard position. During an active move, only check the
+   * non-striking hand (the striking hand is naturally extended).
+   * @param {Array} lm  landmarks
+   * @param {object} idx  stance indices
+   * @param {string|null} activeMoveId  currently expected move, or null
+   */
+  _checkGuard(lm, idx, activeMoveId) {
     const nose   = lm[LM.NOSE];
     const lWrist = lm[idx.leadWrist];
     const rWrist = lm[idx.rearWrist];
 
-    if (!visible(nose, lWrist, rWrist)) return null;
+    if (!visible(nose)) return null;
 
-    // Wrists should be roughly at chin level or above. In a proper Muay Thai
-    // guard the hands are at chin height, which is well below the nose.
+    // Wrists should be roughly at chin level or above.
     // In normalized coords, lower y = higher on screen.
-    const guardThreshold = nose.y + 0.22; // chin level ≈ nose + ~20% of frame
-    const leadDown = lWrist.y > guardThreshold;
-    const rearDown = rWrist.y > guardThreshold;
+    const guardThreshold = nose.y + 0.22;
+
+    // Determine which hands to skip (striking hand during active move)
+    const skipLead = activeMoveId && this._isLeadArmMove(activeMoveId);
+    const skipRear = activeMoveId && this._isRearArmMove(activeMoveId);
+
+    const leadDown = !skipLead && visible(lWrist) && lWrist.y > guardThreshold;
+    const rearDown = !skipRear && visible(rWrist) && rWrist.y > guardThreshold;
 
     if (leadDown && rearDown) return 'hands_down';
     if (leadDown) return 'lead_hand_down';
     if (rearDown) return 'rear_hand_down';
     return null;
+  }
+
+  _isLeadArmMove(moveId) {
+    return ['jab', 'lead_hook', 'lead_uppercut'].includes(moveId);
+  }
+
+  _isRearArmMove(moveId) {
+    return ['cross', 'rear_hook', 'rear_uppercut'].includes(moveId);
   }
 
   _checkFootPosition(lm, idx) {
@@ -209,35 +226,21 @@ export class MoveClassifier {
 
     if (!visible(leadAnkle, rearAnkle)) return null;
 
-    // In a proper stance, lead foot is forward.
-    // For a front-facing mirrored camera:
-    //   "Forward" in the room = closer to camera = larger Y value
-    //   But also the feet should show the correct left/right positioning.
-    // We primarily check that the lead hip is forward of the rear hip
-    // (y position: in normalized coords this means lead hip has higher y
-    //  if the person is bladed toward the camera, but this varies).
-    // More reliable: check ankle x-spread matches expected stance.
-    // For orthodox (left foot forward) with mirrored front camera:
-    //   Lead ankle (MediaPipe right = index 28) should have lower x in raw space
-    //   because it's the user's left foot which appears on the right side of the
-    //   mirrored display, but in RAW (unmirrored) space it has lower x.
-    // Actually the simplest check: lead ankle should NOT be behind rear ankle
-    // in the z-axis. But z from MediaPipe is noisy. Let's use a combined check:
-    // Lead hip should be at least slightly in front (lower z or different x position).
+    // The lead foot should be FORWARD (closer to camera). In a front-facing
+    // camera with normalized coords, the forward foot appears LOWER in the
+    // frame (higher Y value) because it's closer and thus lower in perspective.
+    //
+    // We check Y-axis, not X-axis: both stances have left foot on left and
+    // right foot on right. The difference is which foot is in FRONT.
+    //
+    // If the rear foot's Y is noticeably higher (lower in frame = closer)
+    // than the lead foot's Y, the user has the wrong foot forward.
+    const leadY = leadAnkle.y;
+    const rearY = rearAnkle.y;
 
-    // Simplified: check that lead and rear ankles aren't swapped in x-position
-    // (which would indicate the wrong foot is forward).
-    const leadX = leadAnkle.x;
-    const rearX = rearAnkle.x;
-
-    // For orthodox: lead = MP right indices (lower x), rear = MP left (higher x)
-    // So lead.x should be < rear.x in raw coords
-    // For southpaw: lead = MP left (higher x), rear = MP right (lower x)
-    // So lead.x should be > rear.x in raw coords
-    const isOrthodox = this._stance === 'orthodox';
-    const wrongFoot = isOrthodox
-      ? (leadX > rearX + 0.05)  // lead should have lower x
-      : (leadX < rearX - 0.05); // lead should have higher x
+    // Rear foot should NOT be significantly forward of lead foot.
+    // "Forward" = higher Y in normalized coords (lower in frame).
+    const wrongFoot = rearY > leadY + 0.03;
 
     return wrongFoot ? 'wrong_foot_forward' : null;
   }

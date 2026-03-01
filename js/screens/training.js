@@ -141,18 +141,31 @@ export class TrainingScreen {
       this._renderer.drawPose(data.landmarks, active);
     }));
 
-    // Combo announce → TTS speaks the full combo, then signals completion
+    // Combo announce → TTS speaks the full combo, then signals completion.
+    // IMPORTANT: SpeechSynthesisUtterance.onend is unreliable on Android
+    // Chrome — it frequently doesn't fire. We use a timeout fallback to
+    // guarantee the flow continues even if onend never fires.
     us.push(b.on('combo:announce', ({ text, comboName }) => {
       this._announcing = true;
       this._hud.showCallout(comboName);
-      this._audio.speak(
-        text,
-        null,
-        () => {
-          this._announcing = false;
-          b.emit('combo:announceComplete');
-        },
-      );
+
+      // Estimate TTS duration: ~80ms per character at rate 1.3, plus margin
+      const estimatedMs = Math.max(800, (text.length * 80) / this._audio.rate + 300);
+      let announced = false;
+
+      const finishAnnounce = () => {
+        if (announced) return;
+        announced = true;
+        clearTimeout(this._announceTimeout);
+        this._announcing = false;
+        b.emit('combo:announceComplete');
+      };
+
+      // Try onend first
+      this._audio.speak(text, null, finishAnnounce);
+
+      // Fallback timeout in case onend never fires
+      this._announceTimeout = setTimeout(finishAnnounce, estimatedMs);
     }));
 
     // "Go" beep after TTS finishes, before move tracking starts
@@ -353,6 +366,8 @@ export class TrainingScreen {
 
   _cleanUp() {
     this._stopRoundTimer();
+    clearTimeout(this._announceTimeout);
+    this._announcing = false;
     this._unsubscribeAll();
     this._poseEngine.stopProcessing();
     this._camera.stop();
