@@ -1,20 +1,20 @@
 /**
  * js/camera.js — Camera Manager
- * Acquires and manages the front-facing camera stream via getUserMedia.
- * Attaches the stream to a <video> element and handles lifecycle.
+ * Front camera, portrait, 30 fps, never the microphone (§3.2).
+ * Frames are only ever drawn by the <video> element and read by MediaPipe;
+ * nothing here records or copies them (§10).
  */
 
 export class CameraManager {
   constructor() {
-    this.stream    = null;
-    this.videoEl   = null;
-    this._active   = false;
+    this.stream  = null;
+    this.videoEl = null;
+    this._active = false;
   }
 
   /**
    * Start the camera and attach the stream to videoEl.
    * @param {HTMLVideoElement} videoEl
-   * @returns {Promise<void>}
    */
   async start(videoEl) {
     if (this._active) return;
@@ -22,10 +22,11 @@ export class CameraManager {
 
     const constraints = {
       video: {
-        facingMode: 'user',       // front-facing camera
-        width:      { ideal: 640 },
-        height:     { ideal: 480 },
-        frameRate:  { ideal: 30 },
+        facingMode:  'user',
+        width:       { ideal: 720 },
+        height:      { ideal: 1280 },
+        aspectRatio: { ideal: 9 / 16 },
+        frameRate:   { ideal: 30 },
       },
       audio: false,
     };
@@ -40,37 +41,30 @@ export class CameraManager {
     }
 
     videoEl.srcObject = this.stream;
-
-    await new Promise((resolve, reject) => {
-      videoEl.onloadedmetadata = resolve;
-      videoEl.onerror = reject;
-    });
-
+    if (videoEl.readyState < 1) {
+      await new Promise((resolve, reject) => {
+        videoEl.onloadedmetadata = resolve;
+        videoEl.onerror = reject;
+      });
+    }
     await videoEl.play();
     this._active = true;
   }
 
-  /** Stop the camera stream and release resources. */
+  /** Stop the camera and release it (the camera indicator turns off, §10.7). */
   stop() {
-    if (!this._active) return;
     this.stream?.getTracks().forEach(t => t.stop());
-    if (this.videoEl) {
-      this.videoEl.srcObject = null;
-    }
+    if (this.videoEl) this.videoEl.srcObject = null;
     this.stream  = null;
     this._active = false;
   }
 
   get isActive() { return this._active; }
 
-  /**
-   * Actual video dimensions (may differ from requested due to hardware).
-   * @returns {{ width: number, height: number }}
-   */
   get videoSize() {
     return {
-      width:  this.videoEl?.videoWidth  ?? 640,
-      height: this.videoEl?.videoHeight ?? 480,
+      width:  this.videoEl?.videoWidth  || 720,
+      height: this.videoEl?.videoHeight || 1280,
     };
   }
 }

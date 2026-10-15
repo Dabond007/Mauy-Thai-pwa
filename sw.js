@@ -1,79 +1,70 @@
-const CACHE_NAME = 'nak-muay-v1';
+/**
+ * sw.js — offline support. Cache-first for this origin only; there are no
+ * third-party requests to handle (§10). Bump CACHE_VERSION on every release.
+ */
+
+const CACHE_VERSION = 'v2-a1';
+const CACHE_NAME = `nak-muay-${CACHE_VERSION}`;
 
 const APP_ASSETS = [
   './',
+  './index.html',
   './manifest.json',
   './css/app.css',
   './js/app.js',
+  './js/settings.js',
+  './js/storage.js',
   './js/camera.js',
-  './js/pose-engine.js',
-  './js/move-classifier.js',
-  './js/combo-engine.js',
-  './js/audio.js',
-  './js/renderer.js',
-  './js/hud.js',
+  './js/stage.js',
+  './js/pose/landmarks.js',
+  './js/pose/geometry.js',
+  './js/pose/filter.js',
+  './js/pose/body-model.js',
+  './js/pose/framing.js',
+  './js/pose/calibration.js',
+  './js/pose/pipeline.js',
+  './js/pose/pose-engine.js',
+  './js/audio/voice-queue.js',
+  './js/audio/voice.js',
+  './js/audio/tones.js',
+  './js/render/renderer.js',
+  './js/debug/overlay.js',
   './js/screens/home.js',
-  './js/screens/training.js',
-  './js/screens/results.js',
-  './data/moves.json',
-  './data/combos.json',
+  './js/screens/setup.js',
+  './js/screens/practice.js',
+  './js/screens/settings.js',
   './assets/icons/icon-192.svg',
-  './assets/icons/icon-512.svg'
+  './assets/icons/icon-512.svg',
+  './vendor/mediapipe/vision_bundle.mjs',
+  './vendor/mediapipe/wasm/vision_wasm_internal.js',
+  './vendor/mediapipe/wasm/vision_wasm_internal.wasm',
+  './vendor/mediapipe/models/pose_landmarker_full.task',
 ];
-
-// MediaPipe CDN resources to cache
-const CDN_ASSETS = [
-  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs',
-  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/vision_wasm_internal.js',
-  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/vision_wasm_internal.wasm',
-  'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task'
-];
+// The heavy model (30 MB) is cached on first use, not precached.
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      // Cache app assets (must succeed)
-      const appCachePromise = cache.addAll(APP_ASSETS);
-      // Cache CDN assets best-effort
-      const cdnCachePromise = Promise.allSettled(
-        CDN_ASSETS.map(url => cache.add(url).catch(() => null))
-      );
-      return Promise.all([appCachePromise, cdnCachePromise]);
-    }).then(() => self.skipWaiting())
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_ASSETS)));
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      )
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim()),
   );
 });
 
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-
-  // Cache-first for same-origin assets
-  if (url.origin === self.location.origin) {
-    event.respondWith(cacheFirst(event.request));
-    return;
-  }
-
-  // Stale-while-revalidate for CDN assets (MediaPipe)
-  if (url.hostname.includes('cdn.jsdelivr.net') ||
-      url.hostname.includes('storage.googleapis.com')) {
-    event.respondWith(staleWhileRevalidate(event.request));
-    return;
-  }
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+  event.respondWith(cacheFirst(req));
 });
 
 async function cacheFirst(request) {
-  const cached = await caches.match(request);
+  // Ignore ?debug=1 etc. when matching the app shell.
+  const cached = await caches.match(request, { ignoreSearch: request.mode === 'navigate' });
   if (cached) return cached;
   try {
     const response = await fetch(request);
@@ -83,20 +74,12 @@ async function cacheFirst(request) {
     }
     return response;
   } catch {
+    if (request.mode === 'navigate') {
+      const shell = await caches.match('./index.html');
+      if (shell) return shell;
+    }
     return new Response('Offline', { status: 503 });
   }
-}
-
-async function staleWhileRevalidate(request) {
-  const cached = await caches.match(request);
-  const fetchPromise = fetch(request).then(response => {
-    if (response.ok) {
-      caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
-    }
-    return response;
-  }).catch(() => null);
-
-  return cached || fetchPromise;
 }
 
 self.addEventListener('message', event => {

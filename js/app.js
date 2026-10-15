@@ -1,19 +1,16 @@
 /**
- * js/app.js — Entry point
- * Initialises the event bus, service worker, and all modules.
- * Orchestrates the loading sequence and initial screen display.
+ * js/app.js — Entry point: event bus, boot sequence, screen router.
  */
 
-import { CameraManager }    from './camera.js';
-import { PoseEngine }       from './pose-engine.js';
-import { MoveClassifier }   from './move-classifier.js';
-import { ComboEngine }      from './combo-engine.js';
-import { AudioManager }     from './audio.js';
-import { Renderer }         from './renderer.js';
-import { HUD }              from './hud.js';
-import { HomeScreen }       from './screens/home.js';
-import { TrainingScreen }   from './screens/training.js';
-import { ResultsScreen }    from './screens/results.js';
+import { Settings } from './settings.js';
+import { PoseEngine } from './pose/pose-engine.js';
+import { createVoice } from './audio/voice.js';
+import { Tones } from './audio/tones.js';
+import { Stage } from './stage.js';
+import { HomeScreen } from './screens/home.js';
+import { SetupScreen } from './screens/setup.js';
+import { PracticeScreen } from './screens/practice.js';
+import { SettingsScreen } from './screens/settings.js';
 
 /* ── Event Bus ─────────────────────────────────────────────── */
 
@@ -52,8 +49,8 @@ function setProgress(pct, msg) {
 const SCREENS = {
   loading:  document.getElementById('loading-screen'),
   home:     document.getElementById('home-screen'),
-  training: document.getElementById('training-screen'),
-  results:  document.getElementById('results-screen'),
+  camera:   document.getElementById('camera-screen'),
+  settings: document.getElementById('settings-screen'),
 };
 
 let _currentScreen = 'loading';
@@ -75,56 +72,84 @@ async function boot() {
     setProgress(5, 'Registering service worker…');
     await registerServiceWorker();
 
-    setProgress(15, 'Loading move data…');
-    // Data is loaded by individual modules; just warm up fetch cache here.
-    await Promise.all([
-      fetch('./data/moves.json'),
-      fetch('./data/combos.json'),
-    ]);
+    setProgress(15, 'Loading settings…');
+    const settings = new Settings(bus);
+    await settings.load();
 
-    setProgress(30, 'Initialising audio…');
-    const audio = new AudioManager();
-    await audio.init();
+    const voice = createVoice();
+    const tones = new Tones();
+    const applyAudio = v => {
+      voice.rate = v.voiceRate;
+      voice.volume = v.voiceVolume;
+      tones.enabled = v.tones;
+    };
+    applyAudio(settings.values);
+    bus.on('settings:changed', ({ values }) => applyAudio(values));
 
-    setProgress(40, 'Setting up camera…');
-    const camera = new CameraManager();
+    // Speech and Web Audio both need a user gesture on Android.
+    document.addEventListener('pointerdown', () => {
+      voice.unlock();
+      tones.unlock();
+    }, { once: true });
 
-    setProgress(50, 'Loading pose detection model…');
-    const poseEngine = new PoseEngine(bus);
-    await poseEngine.init();   // downloads + compiles MediaPipe WASM
-
-    setProgress(75, 'Preparing training engine…');
-    const moveClassifier = new MoveClassifier(bus, 'orthodox');
-    const comboEngine    = new ComboEngine(bus);
-    await comboEngine.loadCombos();
+    setProgress(30, 'Loading pose detection model…');
+    const poseEngine = new PoseEngine();
+    try {
+      await poseEngine.init(settings.get('model'));
+    } catch (e) {
+      if (settings.get('model') === 'full') throw e;
+      console.warn('[Boot] model failed, falling back to full:', e);
+      await poseEngine.init('full');
+      await settings.set('model', 'full');
+    }
 
     setProgress(85, 'Building UI…');
-    const renderer = new Renderer(
-      document.getElementById('pose-canvas'),
-      document.getElementById('fx-canvas'),
-    );
-    const hud = new HUD(bus);
+    const deps = { bus, settings, voice, tones, poseEngine };
+    const stage = new Stage(deps);
+    const home = new HomeScreen(deps);
+    const setup = new SetupScreen({ ...deps, stage });
+    const practice = new PracticeScreen({ ...deps, stage });
+    const settingsScreen = new SettingsScreen(deps);
 
-    // Screens
-    const homeScreen     = new HomeScreen(bus);
-    const trainingScreen = new TrainingScreen(
-      bus, camera, poseEngine, moveClassifier, comboEngine, audio, renderer, hud,
-    );
-    const resultsScreen  = new ResultsScreen(bus);
+    let cameraController = null;
+    const leaveCamera = ({ keepCamera = false } = {}) => {
+      cameraController?.close({ keepCamera });
+      cameraController = null;
+    };
 
-    // Wire navigation events
-    bus.on('navigate:home',     () => { homeScreen.show(); showScreen('home'); });
-    bus.on('navigate:training', config => { trainingScreen.show(config); showScreen('training'); });
-    bus.on('navigate:results',  data   => { resultsScreen.show(data);    showScreen('results'); });
+    bus.on('navigate:home', () => {
+      leaveCamera();
+      home.show();
+      showScreen('home');
+    });
+    bus.on('navigate:settings', () => {
+      leaveCamera();
+      settingsScreen.show();
+      showScreen('settings');
+    });
+    bus.on('navigate:setup', opts => {
+      leaveCamera({ keepCamera: true });
+      cameraController = setup;
+      showScreen('camera');
+      setup.open(opts);
+    });
+    bus.on('navigate:practice', () => {
+      leaveCamera({ keepCamera: true });
+      cameraController = practice;
+      showScreen('camera');
+      practice.open();
+    });
+    bus.on('stage:close', () => bus.emit('navigate:home'));
 
-    setProgress(100, 'Ready!');
+    // Leaving the app (switching apps, locking the phone) releases the camera.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && cameraController) bus.emit('navigate:home');
+    });
 
-    // Small pause so the user sees 100%
-    await delay(300);
-
-    homeScreen.show();
+    setProgress(100, 'Ready');
+    await delay(200);
+    home.show();
     showScreen('home');
-
   } catch (err) {
     console.error('[Boot] Fatal error:', err);
     loadingStatus.textContent = `Error: ${err.message}. Please refresh.`;
@@ -136,7 +161,6 @@ async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   try {
     const reg = await navigator.serviceWorker.register('./sw.js');
-
     reg.addEventListener('updatefound', () => {
       const newWorker = reg.installing;
       newWorker.addEventListener('statechange', () => {
@@ -151,16 +175,15 @@ async function registerServiceWorker() {
 }
 
 function showUpdateToast(worker) {
-  const toast  = document.getElementById('update-toast');
-  const btn    = document.getElementById('update-btn');
+  const toast = document.getElementById('update-toast');
+  const btn   = document.getElementById('update-btn');
   toast.classList.add('visible');
   btn.onclick = () => {
     worker.postMessage('SKIP_WAITING');
-    window.location.reload();
+    navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload(), { once: true });
   };
 }
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
-// Kick off
 boot();

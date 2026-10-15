@@ -1,0 +1,10 @@
+{
+  "name": "nak-muay-trainer",
+  "private": true,
+  "type": "module",
+  "description": "Muay Thai basics coach PWA. No build step; tests use the Node test runner.",
+  "scripts": {
+    "test": "node --test",
+    "serve": "python3 -m http.server 8080"
+  }
+}

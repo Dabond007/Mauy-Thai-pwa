@@ -1,0 +1,149 @@
+/**
+ * js/screens/settings.js — Settings (§5.1).
+ */
+
+export class SettingsScreen {
+  constructor({ bus, settings, voice, tones, poseEngine }) {
+    this.bus = bus;
+    this.settings = settings;
+    this.voice = voice;
+    this.tones = tones;
+    this.poseEngine = poseEngine;
+    this.el = document.getElementById('settings-screen');
+  }
+
+  show() {
+    const v = this.settings.values;
+    const c = this.settings.calibration;
+    const opt = (name, value, label, current) =>
+      `<button class="toggle-btn${current === value ? ' active' : ''}" data-${name}="${value}">${label}</button>`;
+
+    this.el.innerHTML = `
+      <header class="home-header">
+        <button class="icon-btn" id="settings-back" aria-label="Back">‹</button>
+        <h1>Settings</h1>
+        <span></span>
+      </header>
+      <div class="home-content">
+        <section class="card">
+          <h2>Stance</h2>
+          <div class="toggle-btn-group">
+            ${opt('stance', 'orthodox', 'Orthodox', c?.stance)}
+            ${opt('stance', 'southpaw', 'Southpaw', c?.stance)}
+          </div>
+          <p class="muted small">${c ? 'Lead and rear follow your stance. Switch any day.' : 'Calibrate first to set your stance.'}</p>
+          <button class="btn-secondary" id="set-recalibrate">Re-calibrate</button>
+        </section>
+
+        <section class="card">
+          <h2>Voice</h2>
+          <label class="row">Speed <input type="range" id="set-rate" min="0.7" max="1.5" step="0.05" value="${v.voiceRate}"><span id="set-rate-val">${v.voiceRate.toFixed(2)}×</span></label>
+          <label class="row">Volume <input type="range" id="set-volume" min="0" max="1" step="0.05" value="${v.voiceVolume}"><span id="set-volume-val">${Math.round(v.voiceVolume * 100)}%</span></label>
+          <div class="row">Coaching
+            <div class="toggle-btn-group">
+              ${opt('verbosity', 'quiet', 'Quiet', v.verbosity)}
+              ${opt('verbosity', 'normal', 'Normal', v.verbosity)}
+              ${opt('verbosity', 'chatty', 'Chatty', v.verbosity)}
+            </div>
+          </div>
+          <div class="row">Tones
+            <div class="toggle-btn-group">
+              ${opt('tones', 'on', 'On', v.tones ? 'on' : 'off')}
+              ${opt('tones', 'off', 'Off', v.tones ? 'on' : 'off')}
+            </div>
+          </div>
+          <button class="btn-secondary" id="set-test-voice">Test voice and tones</button>
+          ${this.voice.available ? '' : '<p class="warn small">Speech isn’t available in this browser.</p>'}
+        </section>
+
+        <section class="card">
+          <h2>Detection</h2>
+          <div class="row">Pose model
+            <div class="toggle-btn-group">
+              ${opt('model', 'full', 'Full', v.model)}
+              ${opt('model', 'heavy', 'Heavy', v.model)}
+            </div>
+          </div>
+          <p class="muted small" id="set-model-note">Heavy is more accurate but slower (30 MB). Keep it only if the debug overlay shows 25+ fps.</p>
+          <div class="row">Debug overlay
+            <div class="toggle-btn-group">
+              ${opt('debug', 'on', 'On', v.debug ? 'on' : 'off')}
+              ${opt('debug', 'off', 'Off', v.debug ? 'on' : 'off')}
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Your data</h2>
+          <p class="muted small">Settings and calibration numbers are stored on this phone only. No video, ever.</p>
+          <button class="btn-danger" id="set-delete">Delete everything</button>
+        </section>
+
+        <p class="muted small privacy">Nak Muay Trainer v2 · Phase A build</p>
+      </div>
+    `;
+    this._bind();
+  }
+
+  _bind() {
+    const $ = s => this.el.querySelector(s);
+    const group = (name, fn) => this.el.querySelectorAll(`[data-${name}]`).forEach(b =>
+      b.addEventListener('click', async () => {
+        this.el.querySelectorAll(`[data-${name}]`).forEach(x => x.classList.toggle('active', x === b));
+        await fn(b.dataset[name]);
+      }));
+
+    $('#settings-back').addEventListener('click', () => this.bus.emit('navigate:home'));
+    $('#set-recalibrate').addEventListener('click', () =>
+      this.bus.emit('navigate:setup', { forceCalibrate: true, next: 'home' }));
+
+    group('stance', async s => {
+      if (!this.settings.calibration) {
+        this.show();
+        return;
+      }
+      await this.settings.setStance(s);
+    });
+    group('verbosity', s => this.settings.set('verbosity', s));
+    group('tones', s => this.settings.set('tones', s === 'on'));
+    group('debug', s => this.settings.set('debug', s === 'on'));
+    group('model', async m => {
+      const note = $('#set-model-note');
+      note.textContent = `Loading the ${m} model…`;
+      try {
+        await this.poseEngine.init(m);
+        await this.settings.set('model', m);
+        note.textContent = `${m === 'heavy' ? 'Heavy' : 'Full'} model loaded (${this.poseEngine.delegate}).`;
+      } catch (e) {
+        note.textContent = `Couldn't load that model: ${e.message}`;
+      }
+    });
+
+    const rate = $('#set-rate');
+    rate.addEventListener('input', () => {
+      $('#set-rate-val').textContent = `${Number(rate.value).toFixed(2)}×`;
+    });
+    rate.addEventListener('change', () => this.settings.set('voiceRate', Number(rate.value)));
+
+    const vol = $('#set-volume');
+    vol.addEventListener('input', () => {
+      $('#set-volume-val').textContent = `${Math.round(vol.value * 100)}%`;
+    });
+    vol.addEventListener('change', () => this.settings.set('voiceVolume', Number(vol.value)));
+
+    $('#set-test-voice').addEventListener('click', () => {
+      this.voice.unlock?.();
+      this.tones.unlock();
+      this.tones.clean();
+      setTimeout(() => this.tones.good(), 400);
+      setTimeout(() => this.tones.fix(), 800);
+      this.voice.say('Gloves by your eyebrows. Out of frame. Back in frame.');
+    });
+
+    $('#set-delete').addEventListener('click', async () => {
+      if (!confirm('Delete all settings and calibration from this phone?')) return;
+      await this.settings.deleteEverything();
+      this.show();
+    });
+  }
+}
