@@ -63,10 +63,18 @@ export class SetupScreen {
     this.stage.setPanel({
       chip: CHIP.red[0], chipLevel: 'red',
       prompt: 'Prop the phone up at waist height, then stand about 3 metres back.',
-      detail: 'Match the outline: whole body in view, feet included.',
+      detail: this._landscapeWarning() ?? 'Match the outline: whole body in view, feet included.',
       progress: 0,
     });
     this.voice.say('Prop the phone up at waist height. Stand about three metres back so I can see all of you.');
+  }
+
+  /** Diagnostic: the camera should give a portrait picture on a portrait phone. */
+  _landscapeWarning() {
+    const cam = this.stage.camera.info;
+    const portrait = window.matchMedia?.('(orientation: portrait)').matches;
+    if (!cam || !portrait || cam.height >= cam.width) return null;
+    return `The camera is giving a landscape picture (${cam.width}×${cam.height}). Please report this.`;
   }
 
   _framing(frame) {

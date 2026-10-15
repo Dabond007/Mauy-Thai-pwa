@@ -138,6 +138,7 @@ export class Stage {
       model: this.poseEngine.model,
       delegate: this.poseEngine.delegate,
       calibration: this.settings.calibration,
+      camera: this.camera.info,
     });
   }
 

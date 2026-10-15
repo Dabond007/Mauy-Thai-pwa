@@ -35,7 +35,7 @@ export class DebugOverlay {
   /**
    * @param {object} frame     pipeline frame
    * @param {object} renderer  for coordinate mapping
-   * @param {object} info      { model, delegate, calibration }
+   * @param {object} info      { model, delegate, calibration, camera }
    */
   draw(frame, renderer, info) {
     if (!this.enabled) return;
@@ -77,6 +77,8 @@ export class DebugOverlay {
     const c = info.calibration;
     const lines = [];
     lines.push(`fps ${frame.fps}  infer ${f1(frame.inferenceMs)}ms  ${info.model ?? '?'}/${info.delegate ?? '?'}`);
+    const cam = info.camera;
+    if (cam) lines.push(`cam ${cam.width}×${cam.height}  resize ${cam.resizeMode}  zoom ${cam.zoom ?? '—'}  try ${cam.attempt + 1}`);
     lines.push(`presence ${frame.presence.state}  framing ${frame.framing.status}`);
     if (frame.framing.issues.length) lines.push(`  issues: ${frame.framing.issues.map(i => i.id).join(', ')}`);
     const m = frame.framing.metrics;
