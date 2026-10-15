@@ -228,7 +228,7 @@ The user is a beginner, so v2 picks the checks from common beginner errors repor
 
 | Technique | Check | Sev. | Det. | Cue |
 |---|---|---|---|---|
-| Jab, Cross | Arm reaches full extension at peak (world-landmark elbow angle ≥ ~150°) | Minor | M | "Punch through the target" |
+| Jab, Cross | Arm reaches full extension at peak: wrist reach ≥ ~90 % of the calibrated reach (§7.2). Until reach is calibrated, falls back to world-landmark elbow angle ≥ ~150° | Minor | M | "Punch through the target" |
 | Jab | Rear hand stays at guard during the punch | Major | H | "Rear glove glued to your cheek" |
 | All punches | Return to guard within ~0.6 s of peak | Major | H | "Snap it straight back to your face" |
 | Cross | Shoulders and hips rotate (world shoulder line turns ≥ ~25°) | Major | M | "Drive your rear hip toward the target" |
@@ -409,7 +409,7 @@ Everything else (all non-guard form faults) waits for the summary.
 | **Fix** | At least one major fault | 2 (effort counts) |
 | **Missed** | No attempt in time, or wrong technique | 0 |
 
-- **Streak**: consecutive Clean/Good reps. Multipliers: 5 → 1.5×, 10 → 2×, 20 → 3×. A Fix keeps the streak but earns no multiplier; a Missed breaks it.
+- **Streak**: count of Clean/Good reps since the last Missed. Multipliers: 5 → 1.5×, 10 → 2×, 20 → 3×, applied to Clean/Good reps only. A Fix neither adds to the count nor resets it, and earns its 2 XP with no multiplier; a Missed resets the count to 0.
 - **Combo bonus**: +20 XP for a combo where every technique is Clean/Good.
 - **Daily streak**: days in a row with at least one completed session.
 - **Session XP** = sum of rep XP + bonuses. No difficulty multiplier (the mastery gates handle difficulty).
@@ -442,7 +442,7 @@ Mastery is computed only from reps where the technique's key checks were measura
 Requirements, not aspirations:
 
 1. **Video is never recorded, stored or transmitted.** Camera frames exist only in memory long enough for pose detection, then are discarded. No `MediaRecorder`, no canvas snapshots, no `toDataURL`/`toBlob` of camera content anywhere in the code.
-2. **No network during training, and no third-party requests at all.** MediaPipe WASM and model files are self-hosted. A Content-Security-Policy restricts `connect-src` and `script-src` to `'self'`.
+2. **No network during training, and no third-party requests at all.** MediaPipe WASM and model files are self-hosted. A Content-Security-Policy restricts `connect-src` to `'self'` and `script-src` to `'self' 'wasm-unsafe-eval'` (Chrome requires `'wasm-unsafe-eval'` to compile WebAssembly; it does not allow JavaScript `eval`).
 3. **No analytics, telemetry or AI services.**
 4. **What is stored (IndexedDB, on the phone only)**: profiles, calibration numbers, per-rep results (technique, rating, which checks failed, timestamps), XP, mastery and settings. **Raw landmark streams are not stored** by default.
 5. **Optional, off-by-default landmark capture** for tuning detection (approved by the user): records numbers only (no images), stays on the phone, is visible in Settings, and can be exported manually as JSON or deleted.
