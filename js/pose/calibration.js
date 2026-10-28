@@ -212,7 +212,9 @@ export class Calibrator {
     const d = body.reach.lead;
     const elbow = body.angles.lead.elbow;
     const out = d > guardReach + this.o.reachOut ||
-      (elbow > Math.max(guardElbow + this.o.elbowOpen, this.o.elbowMin) && d > guardReach + this.o.reachBack);
+      // Facing the camera the wrist barely moves away from the shoulder on a
+      // jab (logged: +0.05–0.15), so only require it not to have come closer.
+      (elbow > Math.max(guardElbow + this.o.elbowOpen, this.o.elbowMin) && d > guardReach);
     const back = d < guardReach + this.o.reachBack && elbow < guardElbow + this.o.elbowOpen;
     r.live = { d, guardReach, elbow, guardElbow, armed: r.armed, conf: body.confidence.lead.arm };
 
