@@ -19,7 +19,10 @@ test('no person is red', () => {
 
 test('feet not visible is red with "step back" tip', () => {
   const low = 0.2;
-  const f = frame({ vis: { [LM.L_ANKLE]: low, [LM.R_ANKLE]: low, [LM.L_HEEL]: low, [LM.R_HEEL]: low } });
+  const f = frame({ vis: {
+    [LM.L_ANKLE]: low, [LM.R_ANKLE]: low, [LM.L_HEEL]: low, [LM.R_HEEL]: low,
+    [LM.L_FOOT]: low, [LM.R_FOOT]: low,
+  } });
   const r = evaluateFraming(f.image, f.world);
   assert.equal(r.status, 'red');
   assert.equal(r.tip, 'Step back until I can see your feet');
@@ -93,4 +96,10 @@ test('greenForMs counts continuous green time', () => {
   assert.equal(m.update(good.image, good.world, 1000).greenForMs, 1000);
   m.update(bad.image, bad.world, 1100);
   assert.equal(m.update(good.image, good.world, 1200).greenForMs, 0);
+});
+
+test('a hidden heel is fine if the ankle or toes are seen', () => {
+  const f = frame({ vis: { [LM.L_HEEL]: 0.3, [LM.R_HEEL]: 0.3, [LM.L_ANKLE]: 0.45, [LM.R_FOOT]: 0.4 } });
+  const r = evaluateFraming(f.image, f.world);
+  assert.equal(r.status, 'green', JSON.stringify(r.issues));
 });

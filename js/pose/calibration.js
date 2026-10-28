@@ -11,9 +11,9 @@
  * Pure: feed it filtered frames {t, image, world}; it returns what to show.
  */
 
-import { LM, sideMap } from './landmarks.js';
+import { LM, sideMap, REQUIRED, minEntryVisibility } from './landmarks.js';
 import { computeBody } from './body-model.js';
-import { median, mean, minVisibility } from './geometry.js';
+import { median, mean } from './geometry.js';
 
 export const CALIBRATION_VERSION = 1;
 
@@ -24,9 +24,12 @@ export const CALIB_DEFAULTS = Object.freeze({
   stillMaxDrift: 0.25,      // body units any tracked joint may wander while "still"
   sampleMs: 1000,           // averaging window once still
   reachReps: 3,
-  reachOut: 0.45,           // body units beyond guard reach to count as a jab
-  reachBack: 0.2,           // back within this of guard reach = rep finished
-  reachTimeoutMs: 30000,
+  reachOut: 0.3,            // body units beyond guard reach to count as a jab...
+  elbowOpen: 40,            // ...or the elbow opening this many degrees past guard
+  elbowMin: 130,            //    and to at least this angle
+  reachBack: 0.15,          // back within this of guard reach (and elbow re-bent) = rep done
+  reachMinVisibility: 0.5,
+  reachTimeoutMs: 45000,
   minVisibility: 0.6,
 });
 
@@ -142,9 +145,8 @@ export class Calibrator {
     this._prevBody = body;
     const t = frame.t;
 
-    const visible = frame.image && minVisibility(frame.image, [
-      LM.NOSE, LM.L_SHOULDER, LM.R_SHOULDER, LM.L_WRIST, LM.R_WRIST,
-      LM.L_HIP, LM.R_HIP, LM.L_ANKLE, LM.R_ANKLE,
+    const visible = frame.image && minEntryVisibility(frame.image, [
+      ...REQUIRED.full, LM.L_WRIST, LM.R_WRIST,
     ]) >= this.o.minVisibility;
 
     const handsUp = body.valid && body.guard.lead.height > -1.0 && body.guard.rear.height > -1.0;
@@ -194,23 +196,33 @@ export class Calibrator {
 
     const body = computeBody(frame, this.result, this._prevBody);
     this._prevBody = body;
-    if (!body.valid || body.confidence.lead.arm < this.o.minVisibility) {
+    if (!body.valid || body.confidence.lead.arm < this.o.reachMinVisibility) {
+      r.live = { conf: body.valid ? body.confidence.lead.arm : 0 };
       return this._out(r.peaks.length / this.o.reachReps);
     }
 
+    // A jab straight at the camera is mostly depth, which the front camera
+    // judges poorly, so either cue counts: the wrist moving away from the
+    // shoulder, or the elbow opening up.
     const guardReach = this.result.guardReach?.lead ?? 0.8;
+    const guardElbow = this.result.guardElbow?.lead ?? 70;
     const d = body.reach.lead;
+    const elbow = body.angles.lead.elbow;
+    const out = d > guardReach + this.o.reachOut ||
+      (elbow > Math.max(guardElbow + this.o.elbowOpen, this.o.elbowMin) && d > guardReach + this.o.reachBack);
+    const back = d < guardReach + this.o.reachBack && elbow < guardElbow + this.o.elbowOpen;
+    r.live = { d, guardReach, elbow, guardElbow, armed: r.armed, conf: body.confidence.lead.arm };
 
-    if (r.armed && d > guardReach + this.o.reachOut) {
+    if (r.armed && out) {
       r.armed = false;
       r.current = d;
-      r.currentElbow = body.angles.lead.elbow;
+      r.currentElbow = elbow;
     } else if (!r.armed) {
       if (d > r.current) {
         r.current = d;
-        r.currentElbow = body.angles.lead.elbow;
+        r.currentElbow = elbow;
       }
-      if (d < guardReach + this.o.reachBack) {
+      if (back) {
         r.peaks.push(r.current);
         r.elbowAtPeak.push(r.currentElbow);
         r.armed = true;
@@ -226,6 +238,11 @@ export class Calibrator {
       }
     }
     return this._out(r.peaks.length / this.o.reachReps);
+  }
+
+  /** Live numbers for the debug overlay and log during the reach step. */
+  get reachLive() {
+    return this._reach?.live ?? null;
   }
 
   /** Skip reach capture; extension checks fall back to elbow angle (§6.2). */
@@ -286,6 +303,7 @@ export function measureStance(samples, stance, swapSides) {
   const guard = {};
   const elbows = {};
   const guardReach = {};
+  const guardElbow = {};
   for (const side of ['lead', 'rear']) {
     guard[side] = { height: m(b => b.guard[pick(b, side)].height) };
     // Elbow sideways offset from its shoulder (+ = outside the shoulder line).
@@ -297,6 +315,7 @@ export function measureStance(samples, stance, swapSides) {
       }),
     };
     guardReach[side] = m(b => b.reach[pick(b, side)]);
+    guardElbow[side] = m(b => b.angles[pick(b, side)].elbow);
   }
 
   // Yaw baselines are computed user-left → user-right, so stance doesn't change them.
@@ -308,6 +327,7 @@ export function measureStance(samples, stance, swapSides) {
     guard,
     elbows,
     guardReach,
+    guardElbow,
     torsoLean: m(b => b.torsoLean),
     shoulderYaw: m(b => b.shoulderYaw),
     hipYaw: m(b => b.hipYaw),

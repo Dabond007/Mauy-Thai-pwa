@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   verbosity: 'normal',     // quiet | normal | chatty (limits scale in Phase B)
   tones: true,
   debug: false,
+  recordLog: false,        // opt-in debug log (numbers only, in memory), §10.5
   model: 'full',           // full | heavy
 });
 

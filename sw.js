@@ -3,7 +3,7 @@
  * third-party requests to handle (§10). Bump CACHE_VERSION on every release.
  */
 
-const CACHE_VERSION = 'v2-a2';
+const CACHE_VERSION = 'v2-a3';
 const CACHE_NAME = `nak-muay-${CACHE_VERSION}`;
 
 const APP_ASSETS = [
@@ -29,6 +29,7 @@ const APP_ASSETS = [
   './js/audio/tones.js',
   './js/render/renderer.js',
   './js/debug/overlay.js',
+  './js/debug/log.js',
   './js/screens/home.js',
   './js/screens/setup.js',
   './js/screens/practice.js',

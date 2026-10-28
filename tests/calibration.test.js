@@ -85,7 +85,7 @@ test('reach: three jabs give the full-extension reach', () => {
 test('reach can be skipped and times out on its own', () => {
   const { cal, t } = calibrate({ jabs: 1 });
   assert.equal(cal.step, STEPS.REACH);
-  run(cal, 31000, () => frame(), t);
+  run(cal, 46000, () => frame(), t);
   assert.equal(cal.step, STEPS.DONE);
   assert.equal(cal.result.reach, null);
 });

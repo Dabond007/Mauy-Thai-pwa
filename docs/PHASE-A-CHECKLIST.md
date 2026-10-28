@@ -49,3 +49,14 @@ With the debug overlay on, note the `fps` and `infer` numbers during the stance 
 - Voice: does it ever talk over itself, cut out, or go silent?
 - Does the skeleton line up with your body on screen?
 - The debug lines `guard Δ`, `elbow` and `lean`: do the numbers move sensibly when you drop your hands, straighten an arm, or lean back?
+
+## Recording a debug log
+
+1. Turn on **Settings → Debug log → Record**. Camera screens show **● LOG** while it's on.
+2. Do the thing that went wrong (for example, Calibrate with the heavy model).
+3. Close the camera screen, open **Settings → Download log**. The file goes to your Downloads folder.
+4. Send it over (see below), then tap **Clear log**, or turn recording off.
+
+The log holds the pose numbers from the last 3 minutes (joint positions and confidence for each frame), plus what the app decided and said. It never includes images. It stays on the phone until you download it.
+
+To replay a log: `node tools/replay.mjs <file>.json`.

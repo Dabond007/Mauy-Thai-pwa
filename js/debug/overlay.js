@@ -81,6 +81,11 @@ export class DebugOverlay {
     if (cam) lines.push(`cam ${cam.width}×${cam.height}  resize ${cam.resizeMode}  zoom ${cam.zoom ?? '—'}  try ${cam.attempt + 1}`);
     lines.push(`presence ${frame.presence.state}  framing ${frame.framing.status}`);
     if (frame.framing.issues.length) lines.push(`  issues: ${frame.framing.issues.map(i => i.id).join(', ')}`);
+    if (frame.image) {
+      const v = i => f2(frame.image[i].visibility);
+      // MediaPipe labels (not swapped): ankle/heel/toe visibility per foot.
+      lines.push(`  feet vis mpL ${v(27)}/${v(29)}/${v(31)}  mpR ${v(28)}/${v(30)}/${v(32)}  knees ${v(25)}/${v(26)}`);
+    }
     const m = frame.framing.metrics;
     lines.push(`  height ${f2(m.bodyHeight)}  x ${f2(m.screenX)}  vis ${f2(m.meanVisibility)}  facing ${f0(m.facingDeg)}°`);
     lines.push(c

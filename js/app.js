@@ -7,6 +7,7 @@ import { PoseEngine } from './pose/pose-engine.js';
 import { createVoice } from './audio/voice.js';
 import { Tones } from './audio/tones.js';
 import { Stage } from './stage.js';
+import { DebugLog } from './debug/log.js';
 import { HomeScreen } from './screens/home.js';
 import { SetupScreen } from './screens/setup.js';
 import { PracticeScreen } from './screens/practice.js';
@@ -92,6 +93,10 @@ async function boot() {
       tones.unlock();
     }, { once: true });
 
+    const log = new DebugLog();
+    log.enabled = settings.get('recordLog');
+    bus.on('settings:changed', ({ values }) => { log.enabled = values.recordLog; });
+
     setProgress(30, 'Loading pose detection model…');
     const poseEngine = new PoseEngine();
     try {
@@ -104,7 +109,7 @@ async function boot() {
     }
 
     setProgress(85, 'Building UI…');
-    const deps = { bus, settings, voice, tones, poseEngine };
+    const deps = { bus, settings, voice, tones, poseEngine, log };
     const stage = new Stage(deps);
     const home = new HomeScreen(deps);
     const setup = new SetupScreen({ ...deps, stage });

@@ -128,8 +128,10 @@ export class SetupScreen {
 
     if (r.step !== this._lastStep) {
       this._lastStep = r.step;
+      this.stage.log.event('calibration', { step: r.step, proposal: cal.proposal }, frame.t);
       this._showStep(cal);
     }
+    if (r.event) this.stage.log.event('calibration', { event: r.event, live: cal.reachLive }, frame.t);
     if (r.event === 'handedness_done' || r.event === 'stance_proposed') this.tones.clean();
     if (r.event === 'reach_rep') this.tones.good();
     if (r.event === 'reach_timeout') this.voice.say('Skipping the jabs for now.');
@@ -141,7 +143,15 @@ export class SetupScreen {
     if (fr.status === 'red' && fr.speak) {
       this.voice.say(fr.speak, { priority: PRIORITY.INFO, key: 'tip', maxWaitMs: 3000 });
     }
-    this.stage.debug.extra = { calibration: `${r.step} ${Math.round(r.progress * 100)}%` };
+    const extra = { calibration: `${r.step} ${Math.round(r.progress * 100)}%` };
+    const live = cal.reachLive;
+    if (r.step === STEPS.REACH && live?.d !== undefined) {
+      extra.jab = `reach ${live.d.toFixed(2)} (guard ${live.guardReach.toFixed(2)}, counts > ${(live.guardReach + cal.o.reachOut).toFixed(2)})  ` +
+        `elbow ${Math.round(live.elbow)}° (guard ${Math.round(live.guardElbow)}°)  ${live.armed ? 'ready' : 'out'}`;
+    } else if (r.step === STEPS.REACH && live) {
+      extra.jab = `lead arm hard to see (${live.conf.toFixed(2)})`;
+    }
+    this.stage.debug.extra = extra;
 
     if (r.step === STEPS.DONE && this._phase === 'calibrate') this._calibrationDone();
   }
@@ -183,6 +193,7 @@ export class SetupScreen {
   async _calibrationDone() {
     this._phase = 'saving';
     await this.settings.setCalibration(this._calibrator.result);
+    this.stage.log.event('calibration', { result: this._calibrator.result });
     this.voice.say('Calibration done.');
     this._finish(true);
   }

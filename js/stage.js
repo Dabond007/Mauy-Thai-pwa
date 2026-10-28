@@ -12,8 +12,9 @@ import { Renderer } from './render/renderer.js';
 import { DebugOverlay } from './debug/overlay.js';
 
 export class Stage {
-  constructor({ bus, poseEngine, settings, voice, tones }) {
+  constructor({ bus, poseEngine, settings, voice, tones, log }) {
     this.bus = bus;
+    this.log = log;
     this.poseEngine = poseEngine;
     this.settings = settings;
     this.voice = voice;
@@ -34,6 +35,7 @@ export class Stage {
       debug: document.getElementById('debug-panel'),
       chip: document.getElementById('cam-chip'),
       timer: document.getElementById('cam-timer'),
+      rec: document.getElementById('cam-rec'),
       prompt: document.getElementById('cam-prompt'),
       progress: document.getElementById('cam-progress'),
       progressFill: document.getElementById('cam-progress-fill'),
@@ -55,7 +57,10 @@ export class Stage {
 
     bus.on('settings:changed', ({ values }) => this.debug.setEnabled(values.debug));
     bus.on('calibration:changed', c => this.pipeline.setCalibration(c));
-    voice.onSpeak = text => { this.debug.lastSpoken = text; };
+    voice.onSpeak = (text, priority) => {
+      this.debug.lastSpoken = text;
+      this.log.event('voice', { text, priority });
+    };
     this.el.close.addEventListener('click', () => this.bus.emit('stage:close'));
     this.el.allowCamera.addEventListener('click', () => {
       if (this._lastStart) this.start(this._lastStart);
@@ -103,6 +108,18 @@ export class Stage {
     this._resizeObserver.observe(this.el.stage);
     this._acquireWakeLock();
 
+    this.el.rec.classList.toggle('hidden', !this.log.enabled);
+    this._lastFramingKey = null;
+    this.log.event('screen', {
+      title,
+      required,
+      camera: this.camera.info,
+      model: this.poseEngine.model,
+      delegate: this.poseEngine.delegate,
+      calibration: this.settings.calibration,
+      viewport: { w: innerWidth, h: innerHeight },
+    });
+
     this.running = true;
     this.poseEngine.start(this.el.video, raw => this._onRaw(raw));
     onStarted?.();
@@ -132,6 +149,7 @@ export class Stage {
     if (!this.running) return;
     this.renderer.setVideoSize(raw.videoWidth, raw.videoHeight);
     const frame = this.pipeline.process(raw);
+    this._logFrame(raw, frame);
     this._handler?.(frame);
     this.renderer.draw(frame, { ...this.drawOpts, sides: !!this.settings.calibration });
     this.debug.draw(frame, this.renderer, {
@@ -140,6 +158,23 @@ export class Stage {
       calibration: this.settings.calibration,
       camera: this.camera.info,
     });
+  }
+
+  _logFrame(raw, frame) {
+    if (!this.log.enabled) return;
+    this.log.frame(raw);
+    for (const ev of frame.presence.events) this.log.event('presence', ev, frame.t);
+    const fr = frame.framing;
+    const key = `${fr.status}|${fr.issues.map(i => i.id).join(',')}`;
+    if (key !== this._lastFramingKey) {
+      this._lastFramingKey = key;
+      this.log.event('framing', {
+        status: fr.status,
+        issues: fr.issues.map(i => i.id),
+        missing: fr.metrics.missing,
+        metrics: fr.metrics,
+      }, frame.t);
+    }
   }
 
   _syncSize() {

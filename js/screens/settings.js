@@ -3,7 +3,8 @@
  */
 
 export class SettingsScreen {
-  constructor({ bus, settings, voice, tones, poseEngine }) {
+  constructor({ bus, settings, voice, tones, poseEngine, log }) {
+    this.log = log;
     this.bus = bus;
     this.settings = settings;
     this.voice = voice;
@@ -74,6 +75,20 @@ export class SettingsScreen {
         </section>
 
         <section class="card">
+          <h2>Debug log</h2>
+          <p class="muted small">For tuning detection. Records pose numbers only — never images — in memory on this phone (the last 3 minutes). Nothing leaves the phone unless you download it.</p>
+          <div class="row">Record
+            <div class="toggle-btn-group">
+              ${opt('log', 'on', 'On', v.recordLog ? 'on' : 'off')}
+              ${opt('log', 'off', 'Off', v.recordLog ? 'on' : 'off')}
+            </div>
+          </div>
+          <button class="btn-secondary" id="set-log-download"${this.log.frames.length ? '' : ' disabled'}>Download log (${Math.round(this.log.seconds)} s)</button>
+          <button class="btn-secondary" id="set-log-clear"${this.log.frames.length ? '' : ' disabled'}>Clear log</button>
+          <p class="muted small" id="set-log-note"></p>
+        </section>
+
+        <section class="card">
           <h2>Your data</h2>
           <p class="muted small">Settings and calibration numbers are stored on this phone only. No video, ever.</p>
           <button class="btn-danger" id="set-delete">Delete everything</button>
@@ -107,6 +122,16 @@ export class SettingsScreen {
     group('verbosity', s => this.settings.set('verbosity', s));
     group('tones', s => this.settings.set('tones', s === 'on'));
     group('debug', s => this.settings.set('debug', s === 'on'));
+    group('log', s => this.settings.set('recordLog', s === 'on'));
+
+    $('#set-log-download').addEventListener('click', () => {
+      const bytes = this.log.download();
+      $('#set-log-note').textContent = `Saved ${(bytes / 1e6).toFixed(1)} MB to your Downloads folder.`;
+    });
+    $('#set-log-clear').addEventListener('click', () => {
+      this.log.clear();
+      this.show();
+    });
     group('model', async m => {
       const note = $('#set-model-note');
       note.textContent = `Loading the ${m} model…`;
@@ -143,6 +168,7 @@ export class SettingsScreen {
     $('#set-delete').addEventListener('click', async () => {
       if (!confirm('Delete all settings and calibration from this phone?')) return;
       await this.settings.deleteEverything();
+      this.log.clear();
       this.show();
     });
   }

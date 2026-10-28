@@ -5,7 +5,7 @@
  * frame) and timestamps in ms. All thresholds are starting points to tune.
  */
 
-import { LM, REQUIRED, FRAMING_LANDMARKS } from './landmarks.js';
+import { LM, REQUIRED, FRAMING_LANDMARKS, bestOf, missingEntries } from './landmarks.js';
 import { imageBodyExtent } from './body-model.js';
 import { mean, minVisibility, yawDeg } from './geometry.js';
 
@@ -46,9 +46,8 @@ export function evaluateFraming(image, world = null, opts = FRAMING_DEFAULTS) {
     return finalise(issues, metrics);
   }
 
-  const vis = i => image[i]?.visibility ?? 0;
-  const missing = FRAMING_LANDMARKS.filter(i => vis(i) < o.minVisibility);
-  metrics.meanVisibility = mean(FRAMING_LANDMARKS.map(vis));
+  const missing = missingEntries(image, FRAMING_LANDMARKS, o.minVisibility);
+  metrics.meanVisibility = mean(FRAMING_LANDMARKS.map(e => bestOf(image, e)?.visibility ?? 0));
   metrics.missing = missing;
 
   if (missing.length) {
@@ -71,8 +70,8 @@ export function evaluateFraming(image, world = null, opts = FRAMING_DEFAULTS) {
       issues.push({ id: 'too_close', level: 'amber', tip: 'Step back a little' });
     }
 
-    const nearEdge = FRAMING_LANDMARKS.some(i => {
-      const p = image[i];
+    const nearEdge = FRAMING_LANDMARKS.some(e => {
+      const p = bestOf(image, e);
       return p.x < o.edgeMargin || p.x > 1 - o.edgeMargin ||
              p.y < o.edgeMargin || p.y > 1 - o.edgeMargin;
     });
@@ -218,8 +217,8 @@ export class PresenceMonitor {
   _visible(image, minVis) {
     if (!image) return false;
     const s = this.o.frameSlack;
-    return this._required.every(i => {
-      const p = image[i];
+    return this._required.every(e => {
+      const p = bestOf(image, e);
       return p && (p.visibility ?? 0) >= minVis &&
         p.x >= -s && p.x <= 1 + s && p.y >= -s && p.y <= 1 + s;
     });

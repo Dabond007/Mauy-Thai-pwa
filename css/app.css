@@ -291,6 +291,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .btn-primary { background: var(--accent); color: white; border: none; }
+button:disabled { opacity: 0.4; cursor: default; }
 .btn-secondary { background: transparent; color: var(--text-primary); border: 1px solid rgba(255, 255, 255, 0.2); }
 .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
 
@@ -322,6 +323,13 @@ input[type="range"]::-webkit-slider-thumb {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--accent);
+}
+
+#cam-rec {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--danger);
 }
 
 #cam-stage {
