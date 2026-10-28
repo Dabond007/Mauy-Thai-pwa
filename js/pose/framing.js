@@ -23,6 +23,7 @@ export const FRAMING_DEFAULTS = Object.freeze({
   lightingHoldMs: 2000,
   facingMaxDeg: 50,
   tipIntervalMs: 5000,
+  tipHoldMs: 1000,        // a problem must last this long before it is spoken
 });
 
 const UPPER_BODY = [LM.NOSE, LM.L_SHOULDER, LM.R_SHOULDER, LM.L_HIP, LM.R_HIP];
@@ -117,20 +118,22 @@ function finalise(issues, metrics) {
 
 /**
  * Adds the time-based lighting check and throttles spoken tips to one per
- * `tipIntervalMs`, never repeating the same tip back to back sooner than that.
+ * `tipIntervalMs`. A tip is only spoken once its problem has lasted
+ * `tipHoldMs`, so a one-frame landmark flicker never triggers a voice line.
  */
 export class FramingMonitor {
   constructor(opts = {}) {
     this.o = { ...FRAMING_DEFAULTS, ...opts };
     this._lowLightSince = null;
-    this._lastSpokenAt = -Infinity;
-    this._greenSince = null;
+    this.reset();
   }
 
   reset() {
     this._lowLightSince = null;
     this._lastSpokenAt = -Infinity;
     this._greenSince = null;
+    this._tip = null;
+    this._tipSince = null;
   }
 
   /**
@@ -154,8 +157,13 @@ export class FramingMonitor {
     else this._greenSince = null;
     r.greenForMs = this._greenSince === null ? 0 : t - this._greenSince;
 
+    if (r.tip !== this._tip) {
+      this._tip = r.tip;
+      this._tipSince = t;
+    }
     r.speak = null;
-    if (r.tip && t - this._lastSpokenAt >= this.o.tipIntervalMs) {
+    if (r.tip && t - this._tipSince >= this.o.tipHoldMs &&
+        t - this._lastSpokenAt >= this.o.tipIntervalMs) {
       r.speak = r.tip;
       this._lastSpokenAt = t;
     }

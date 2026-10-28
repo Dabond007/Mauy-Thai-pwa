@@ -79,13 +79,24 @@ test('lighting tip needs 2 s of low visibility', () => {
   assert.equal(r.status, 'amber');
 });
 
-test('spoken tips are throttled to one per 5 s', () => {
+test('spoken tips wait 1 s, then are throttled to one per 5 s', () => {
   const m = new FramingMonitor();
   const f = frame({ distance: 4.5 });
-  assert.equal(m.update(f.image, f.world, 0).speak, 'Come a little closer');
-  assert.equal(m.update(f.image, f.world, 2000).speak, null);
-  assert.equal(m.update(f.image, f.world, 4999).speak, null);
-  assert.equal(m.update(f.image, f.world, 5000).speak, 'Come a little closer');
+  assert.equal(m.update(f.image, f.world, 0).speak, null);
+  assert.equal(m.update(f.image, f.world, 1000).speak, 'Come a little closer');
+  assert.equal(m.update(f.image, f.world, 3000).speak, null);
+  assert.equal(m.update(f.image, f.world, 5999).speak, null);
+  assert.equal(m.update(f.image, f.world, 6000).speak, 'Come a little closer');
+});
+
+test('a one-frame flicker is never spoken', () => {
+  const m = new FramingMonitor();
+  const good = frame();
+  const blip = frame({ vis: { 26: 0.3 } });
+  m.update(good.image, good.world, 0);
+  assert.equal(m.update(blip.image, blip.world, 33).speak, null);
+  m.update(good.image, good.world, 66);
+  assert.equal(m.update(blip.image, blip.world, 1500).speak, null);
 });
 
 test('greenForMs counts continuous green time', () => {

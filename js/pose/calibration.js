@@ -26,7 +26,7 @@ export const CALIB_DEFAULTS = Object.freeze({
   reachReps: 3,
   reachOut: 0.3,            // body units beyond guard reach to count as a jab...
   elbowOpen: 40,            // ...or the elbow opening this many degrees past guard
-  elbowMin: 130,            //    and to at least this angle
+  elbowMin: 115,            //    and to at least this angle (real frontal jabs: 122–137°)
   reachBack: 0.15,          // back within this of guard reach (and elbow re-bent) = rep done
   reachMinVisibility: 0.5,
   reachTimeoutMs: 45000,

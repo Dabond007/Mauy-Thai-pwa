@@ -3,7 +3,7 @@
  * third-party requests to handle (§10). Bump CACHE_VERSION on every release.
  */
 
-const CACHE_VERSION = 'v2-a4';
+const CACHE_VERSION = 'v2-a5';
 const CACHE_NAME = `nak-muay-${CACHE_VERSION}`;
 
 const APP_ASSETS = [
