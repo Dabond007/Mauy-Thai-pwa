@@ -12,7 +12,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   tones: true,
   debug: false,
   recordLog: false,        // opt-in debug log (numbers only, in memory), §10.5
-  model: 'full',           // full | heavy
+  model: 'full',           // only 'full' ships (heavy too slow on Pixel 9)
 });
 
 export class Settings {
@@ -28,7 +28,7 @@ export class Settings {
         storage.get('settings'),
         storage.get('calibration'),
       ]);
-      this.values = { ...DEFAULT_SETTINGS, ...(values ?? {}) };
+      this.values = { ...DEFAULT_SETTINGS, ...(values ?? {}), model: 'full' };
       this.calibration = calibration ?? null;
     } catch (e) {
       console.warn('[Settings] IndexedDB unavailable, using defaults:', e);

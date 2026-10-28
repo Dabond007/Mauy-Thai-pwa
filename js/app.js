@@ -99,14 +99,7 @@ async function boot() {
 
     setProgress(30, 'Loading pose detection model…');
     const poseEngine = new PoseEngine();
-    try {
-      await poseEngine.init(settings.get('model'));
-    } catch (e) {
-      if (settings.get('model') === 'full') throw e;
-      console.warn('[Boot] model failed, falling back to full:', e);
-      await poseEngine.init('full');
-      await settings.set('model', 'full');
-    }
+    await poseEngine.init('full');
 
     setProgress(85, 'Building UI…');
     const deps = { bus, settings, voice, tones, poseEngine, log };

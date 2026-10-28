@@ -42,7 +42,7 @@ Open the app once online. Then turn on airplane mode, close the app completely, 
 
 ## 5. Model benchmark
 
-With the debug overlay on, note the `fps` and `infer` numbers during the stance check. Then switch **Settings → Pose model → Heavy** and check again. Heavy should only be kept if it holds 25+ fps.
+Done from the first debug log: Full ran at about 23 fps (25 ms inference) and Heavy at about 16 fps (57 ms). Heavy is below the 25 fps bar, so it has been removed.
 
 ## Also useful
 
@@ -53,7 +53,7 @@ With the debug overlay on, note the `fps` and `infer` numbers during the stance 
 ## Recording a debug log
 
 1. Turn on **Settings → Debug log → Record**. Camera screens show **● LOG** while it's on.
-2. Do the thing that went wrong (for example, Calibrate with the heavy model).
+2. Do the thing that went wrong (for example, Calibrate).
 3. Close the camera screen, open **Settings → Download log**. The file goes to your Downloads folder.
 4. Attach it in the Claude chat, then tap **Clear log** or turn recording off. Avoid uploading it to this repo: the repo is public.
 

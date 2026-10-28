@@ -116,3 +116,19 @@ test('calibration is due when missing, outdated or older than 7 days', () => {
   assert.equal(calibrationDue({ version: CALIBRATION_VERSION, createdAt: now - 8 * 86400e3 }, now), true);
   assert.equal(calibrationDue({ version: 0, createdAt: now }, now), true);
 });
+
+test('pause() discards a half-finished jab and stops the timeout clock', () => {
+  const { cal, t } = calibrate({ jabs: 0 });
+  assert.equal(cal.step, STEPS.REACH);
+  // Arm goes out (jab started)...
+  let end = run(cal, 400, () => frame({ jab: 1 }), t).t;
+  // ...then the user walks out of frame; on return, the arm coming back to
+  // guard must not complete a rep.
+  cal.pause();
+  const r = run(cal, 500, () => frame(), end);
+  assert.ok(!r.events.includes('reach_rep'));
+  // While paused (no update calls) the 45 s window doesn't run down.
+  cal.pause();
+  run(cal, 1000, () => frame(), r.t + 60000);
+  assert.equal(cal.step, STEPS.REACH);
+});

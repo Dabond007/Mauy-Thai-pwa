@@ -186,10 +186,13 @@ export class Calibrator {
 
   _reachStep(frame) {
     const t = frame.t;
-    this._reach ??= { startedAt: t, armed: true, current: 0, peaks: [], elbowAtPeak: [] };
+    this._reach ??= { activeMs: 0, lastT: null, armed: true, current: 0, peaks: [], elbowAtPeak: [] };
     const r = this._reach;
 
-    if (t - r.startedAt > this.o.reachTimeoutMs) {
+    // The timeout counts only time the user is actually in frame.
+    if (r.lastT !== null) r.activeMs += Math.min(100, t - r.lastT);
+    r.lastT = t;
+    if (r.activeMs > this.o.reachTimeoutMs) {
       this.skipReach();
       return this._out(1, 'reach_timeout');
     }
@@ -243,6 +246,21 @@ export class Calibrator {
   /** Live numbers for the debug overlay and log during the reach step. */
   get reachLive() {
     return this._reach?.live ?? null;
+  }
+
+  /**
+   * The user left the frame (or isn't settled back in yet): drop anything
+   * half-measured so walking around can't count as a held stance or a jab.
+   */
+  pause() {
+    this._raise = null;
+    this._stillSince = null;
+    this._anchor = null;
+    this._samples = [];
+    this._prevBody = null;
+    if (this._reach) {
+      Object.assign(this._reach, { armed: true, current: 0, lastT: null, live: null });
+    }
   }
 
   /** Skip reach capture; extension checks fall back to elbow angle (§6.2). */

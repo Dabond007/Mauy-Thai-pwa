@@ -59,13 +59,7 @@ export class SettingsScreen {
 
         <section class="card">
           <h2>Detection</h2>
-          <div class="row">Pose model
-            <div class="toggle-btn-group">
-              ${opt('model', 'full', 'Full', v.model)}
-              ${opt('model', 'heavy', 'Heavy', v.model)}
-            </div>
-          </div>
-          <p class="muted small" id="set-model-note">Heavy is more accurate but slower (30 MB). Keep it only if the debug overlay shows 25+ fps.</p>
+          <p class="muted small">Pose model: Full (${this.poseEngine.delegate ?? '—'}). The Heavy model ran at about 16 fps on a Pixel 9 — too slow to follow strikes — so it isn't offered.</p>
           <div class="row">Debug overlay
             <div class="toggle-btn-group">
               ${opt('debug', 'on', 'On', v.debug ? 'on' : 'off')}
@@ -132,18 +126,6 @@ export class SettingsScreen {
       this.log.clear();
       this.show();
     });
-    group('model', async m => {
-      const note = $('#set-model-note');
-      note.textContent = `Loading the ${m} model…`;
-      try {
-        await this.poseEngine.init(m);
-        await this.settings.set('model', m);
-        note.textContent = `${m === 'heavy' ? 'Heavy' : 'Full'} model loaded (${this.poseEngine.delegate}).`;
-      } catch (e) {
-        note.textContent = `Couldn't load that model: ${e.message}`;
-      }
-    });
-
     const rate = $('#set-rate');
     rate.addEventListener('input', () => {
       $('#set-rate-val').textContent = `${Number(rate.value).toFixed(2)}×`;

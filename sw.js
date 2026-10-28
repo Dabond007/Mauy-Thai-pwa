@@ -3,7 +3,7 @@
  * third-party requests to handle (§10). Bump CACHE_VERSION on every release.
  */
 
-const CACHE_VERSION = 'v2-a3';
+const CACHE_VERSION = 'v2-a4';
 const CACHE_NAME = `nak-muay-${CACHE_VERSION}`;
 
 const APP_ASSETS = [
@@ -41,7 +41,6 @@ const APP_ASSETS = [
   './vendor/mediapipe/wasm/vision_wasm_internal.wasm',
   './vendor/mediapipe/models/pose_landmarker_full.task',
 ];
-// The heavy model (30 MB) is cached on first use, not precached.
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_ASSETS)));

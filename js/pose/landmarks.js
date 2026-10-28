@@ -50,7 +50,7 @@ export function sideMap(swapSides = false, stance = 'orthodox') {
 /**
  * A foot counts as seen if any of its ankle, heel or toe landmarks is.
  * From a front camera the heel is often hidden behind the foot, and models
- * differ in how confident they are about each point (heavy vs full).
+ * is not equally confident about each point.
  */
 const L_FOOT_ANY = Object.freeze([LM.L_ANKLE, LM.L_HEEL, LM.L_FOOT]);
 const R_FOOT_ANY = Object.freeze([LM.R_ANKLE, LM.R_HEEL, LM.R_FOOT]);

@@ -120,10 +120,33 @@ export class SetupScreen {
     this._phase = 'calibrate';
     this._calibrator = new Calibrator({ previous: this.settings.calibration });
     this._lastStep = null;
+    this._paused = false;
   }
 
   _calibrate(frame) {
     const cal = this._calibrator;
+
+    // Only measure while the user is in frame and has been back for 1.5 s.
+    // Walking out (or back from tapping the phone) must not count as a held
+    // stance or a jab — the first debug log showed exactly that.
+    const settled = frame.presence.state === 'TRACKING' || frame.presence.state === 'RESUMING';
+    if (!settled) {
+      if (!this._paused) {
+        this._paused = true;
+        cal.pause();
+        this.stage.log.event('calibration', { paused: true }, frame.t);
+      }
+      const fr = frame.framing;
+      this.stage.setDetail(fr.tip ?? 'Step back into the picture.');
+      if (fr.speak) this.voice.say(fr.speak, { priority: PRIORITY.INFO, key: 'tip', maxWaitMs: 3000 });
+      this.stage.debug.extra = { calibration: `${cal.step} paused (not in frame)` };
+      return;
+    }
+    if (this._paused) {
+      this._paused = false;
+      this.stage.log.event('calibration', { paused: false }, frame.t);
+    }
+
     const r = cal.update(frame);
 
     if (r.step !== this._lastStep) {
@@ -170,6 +193,13 @@ export class SetupScreen {
     const actions = [];
     if (step === STEPS.HANDEDNESS) {
       actions.push({ label: 'Skip', kind: 'secondary', onClick: () => { cal.skipHandedness(); } });
+    } else if (step === STEPS.CONFIRM_STANCE && cal.proposal.confidence === 'high') {
+      // Confident: announce and carry on, so the user doesn't have to walk
+      // to the phone mid-calibration. Settings can switch it later.
+      const p = cal.proposal;
+      this.voice.say(`${p.stance === 'orthodox' ? 'Left' : 'Right'} foot forward. ${cap(p.stance)} stance.`);
+      cal.confirmStance(p.stance);
+      return;
     } else if (step === STEPS.CONFIRM_STANCE) {
       const p = cal.proposal;
       const other = p.stance === 'orthodox' ? 'southpaw' : 'orthodox';
@@ -187,7 +217,7 @@ export class SetupScreen {
       chip: 'Calibrating', chipLevel: 'info',
       prompt, detail: this._stepDetail(step), progress: 0, actions,
     });
-    if (step !== STEPS.DONE) this.voice.say(prompt.replace('—', ','), { key: 'calib' });
+    if (step !== STEPS.DONE) this.voice.say(prompt.replace(' — ', ', '), { key: 'calib' });
   }
 
   async _calibrationDone() {

@@ -9,9 +9,11 @@
 
 const VENDOR = new URL('../../vendor/mediapipe/', import.meta.url);
 
+// Heavy was benchmarked on the Pixel 9 (Phase A): ~16 fps, 57 ms inference,
+// and lower knee/heel visibility than Full — below the 25 fps bar, so only
+// Full ships (spec §7.1).
 export const MODELS = Object.freeze({
-  full:  'models/pose_landmarker_full.task',
-  heavy: 'models/pose_landmarker_heavy.task',
+  full: 'models/pose_landmarker_full.task',
 });
 
 export class PoseEngine {
@@ -31,9 +33,10 @@ export class PoseEngine {
 
   /**
    * Load (or switch) the model. Safe to call again with a different model.
-   * @param {'full'|'heavy'} model
+   * @param {'full'} model
    */
   async init(model = 'full') {
+    if (!MODELS[model]) model = 'full';
     if (this._landmarker && this._model === model) return;
     const { PoseLandmarker } = await import(new URL('vision_bundle.mjs', VENDOR).href);
 

@@ -228,7 +228,7 @@ The user is a beginner, so v2 picks the checks from common beginner errors repor
 
 | Technique | Check | Sev. | Det. | Cue |
 |---|---|---|---|---|
-| Jab, Cross | Arm reaches full extension at peak: wrist reach ≥ ~90 % of the calibrated reach (§7.2). Until reach is calibrated, falls back to world-landmark elbow angle ≥ ~150° | Minor | M | "Punch through the target" |
+| Jab, Cross | Arm reaches full extension at peak: wrist reach ≥ ~90 % of the calibrated reach (§7.2). Until reach is calibrated, the check reports unknown. (Phase A data: a full jab straight at the front camera read only ~125–135° elbow angle in world landmarks, so a fixed 150° threshold would fail every jab.) | Minor | M | "Punch through the target" |
 | Jab | Rear hand stays at guard during the punch | Major | H | "Rear glove glued to your cheek" |
 | All punches | Return to guard within ~0.6 s of peak | Major | H | "Snap it straight back to your face" |
 | Cross | Shoulders and hips rotate (world shoulder line turns ≥ ~25°) | Major | M | "Drive your rear hip toward the target" |
@@ -288,11 +288,11 @@ camera frame (never stored)
 - **Use `presence` and `visibility`** per landmark for confidence.
 - **One Euro filter** instead of fixed-alpha EMA: less jitter when still, less lag when moving fast. Parameters tuned on device.
 - **Velocities in body units per second** computed from timestamps, not per frame (v1's per-frame velocity changed meaning whenever the frame rate changed).
-- **Model**: start with `pose_landmarker_full`; benchmark `heavy` on the Pixel 9 and offer it if it holds ≥ 25 FPS.
+- **Model**: `pose_landmarker_full`. `heavy` was benchmarked on the Pixel 9 in Phase A at about 16 FPS (57 ms inference), below the 25 FPS bar, and had lower knee/heel visibility, so it is not offered. Full measured about 23 FPS (25 ms inference).
 
 ### 7.2 Calibration (first run, then on demand)
 1. **Handedness check**: "Raise your **left** hand above your head." Whichever landmark wrist rises is recorded as the user's left. If it's MediaPipe's index 16, the app sets a `swapSides` flag. This settles the v1 mirror question empirically on the real device.
-2. **Stance**: "Get in your fighting stance and hold still." Both orthodox and southpaw are fully supported. The app records which foot is forward, confirms it with the user, and re-checks it at the start of every session, so you can train either side on different days. It can also be switched in Settings. All lead/rear mappings follow the current stance. The app stores:
+2. **Stance**: "Get in your fighting stance and hold still." Both orthodox and southpaw are fully supported. The app records which foot is forward and announces it ("Left foot forward. Orthodox stance."). It asks the user to tap Yes/No only when unsure, because the user is ~3 m from the phone and walking over to tap mid-calibration disrupts the remaining steps. It re-checks the stance at the start of every session, so you can train either side on different days. It can also be switched in Settings. All lead/rear mappings follow the current stance. The app stores:
    - stance width, in shoulder-widths
    - guard height (wrists relative to nose and shoulders)
    - elbow positions
