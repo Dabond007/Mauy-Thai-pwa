@@ -43,6 +43,15 @@ export class HomeScreen {
         </section>
 
         <section class="card">
+          <h2>Angle test</h2>
+          <p class="muted">Calls out stance, jabs, crosses, kicks and teeps with a beep for each, and records a debug log (numbers only) to compare camera angles. About 2½ minutes.</p>
+          <div class="btn-row">
+            <button class="btn-primary" id="home-angle-30">30°</button>
+            <button class="btn-secondary" id="home-angle-45">45°</button>
+          </div>
+        </section>
+
+        <section class="card">
           <h2>Coming next</h2>
           <div class="tile-grid">
             <div class="tile disabled"><span>Daily Basics</span></div>
@@ -63,6 +72,10 @@ export class HomeScreen {
       this.bus.emit('navigate:setup', { next: 'practice' }));
     this.el.querySelector('#home-calibrate').addEventListener('click', () =>
       this.bus.emit('navigate:setup', { forceCalibrate: true, next: 'home' }));
+    this.el.querySelector('#home-angle-30').addEventListener('click', () =>
+      this.bus.emit('navigate:angle-test', { angle: 30 }));
+    this.el.querySelector('#home-angle-45').addEventListener('click', () =>
+      this.bus.emit('navigate:angle-test', { angle: 45 }));
     this.el.querySelector('#home-settings').addEventListener('click', () =>
       this.bus.emit('navigate:settings'));
   }

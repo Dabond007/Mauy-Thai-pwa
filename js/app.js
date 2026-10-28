@@ -11,6 +11,7 @@ import { DebugLog } from './debug/log.js';
 import { HomeScreen } from './screens/home.js';
 import { SetupScreen } from './screens/setup.js';
 import { PracticeScreen } from './screens/practice.js';
+import { AngleTestScreen } from './screens/angle-test.js';
 import { SettingsScreen } from './screens/settings.js';
 
 /* ── Event Bus ─────────────────────────────────────────────── */
@@ -107,6 +108,7 @@ async function boot() {
     const home = new HomeScreen(deps);
     const setup = new SetupScreen({ ...deps, stage });
     const practice = new PracticeScreen({ ...deps, stage });
+    const angleTest = new AngleTestScreen({ ...deps, stage });
     const settingsScreen = new SettingsScreen(deps);
 
     let cameraController = null;
@@ -136,6 +138,12 @@ async function boot() {
       cameraController = practice;
       showScreen('camera');
       practice.open();
+    });
+    bus.on('navigate:angle-test', opts => {
+      leaveCamera({ keepCamera: true });
+      cameraController = angleTest;
+      showScreen('camera');
+      angleTest.open(opts);
     });
     bus.on('stage:close', () => bus.emit('navigate:home'));
 

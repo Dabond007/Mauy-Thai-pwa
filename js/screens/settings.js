@@ -70,7 +70,7 @@ export class SettingsScreen {
 
         <section class="card">
           <h2>Debug log</h2>
-          <p class="muted small">For tuning detection. Records pose numbers only — never images — in memory on this phone (the last 3 minutes). Nothing leaves the phone unless you download it.</p>
+          <p class="muted small">For tuning detection. Records pose numbers only — never images — in memory on this phone (the last 4 minutes). Nothing leaves the phone unless you download it.</p>
           <div class="row">Record
             <div class="toggle-btn-group">
               ${opt('log', 'on', 'On', v.recordLog ? 'on' : 'off')}

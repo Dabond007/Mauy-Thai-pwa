@@ -187,6 +187,9 @@ button { font: inherit; }
 .warn  { color: var(--warning); }
 .privacy { text-align: center; }
 
+.btn-row { display: flex; gap: 10px; }
+.btn-row button { flex: 1; }
+
 .calib-line { font-size: 13px; color: var(--text-secondary); text-align: center; }
 
 .tile-grid {

@@ -15,7 +15,7 @@ const r4 = v => Math.round(v * 1e4) / 1e4;
 const r2 = v => Math.round(v * 100) / 100;
 
 export class DebugLog {
-  constructor({ maxSeconds = 180 } = {}) {
+  constructor({ maxSeconds = 240 } = {}) {
     this.maxMs = maxSeconds * 1000;
     this.enabled = false;
     this.clear();
