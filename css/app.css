@@ -187,6 +187,26 @@ button { font: inherit; }
 .warn  { color: var(--warning); }
 .privacy { text-align: center; }
 
+.player-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.level { font-size: 22px; font-weight: 800; color: var(--accent); }
+.xp-bar { height: 8px; border-radius: 4px; background: var(--bg-card); overflow: hidden; }
+.xp-bar div { height: 100%; background: var(--accent); }
+
+.tech-list { display: flex; flex-direction: column; gap: 8px; }
+.tech-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 14px; min-height: 52px;
+  background: var(--bg-primary); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 16px; font-weight: 700; cursor: pointer; text-align: left;
+}
+.tech-row.locked { color: var(--text-secondary); }
+.badge { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; }
+.badge.new { background: rgba(255,255,255,0.08); color: var(--text-secondary); }
+.badge.learning { background: rgba(99,179,237,0.2); color: var(--info); }
+.badge.solid { background: rgba(72,187,120,0.2); color: var(--success); }
+.badge.sharp { background: rgba(233,69,96,0.2); color: var(--accent); }
+
 .btn-row { display: flex; gap: 10px; }
 .btn-row button { flex: 1; }
 
@@ -436,6 +456,14 @@ button:disabled { opacity: 0.4; cursor: default; }
   background: var(--success);
   transition: width 0.15s linear;
 }
+
+#cam-strip { display: flex; gap: 6px; }
+#cam-strip:empty { display: none; }
+#cam-strip .rep { flex: 1; height: 10px; border-radius: 5px; background: var(--bg-card); }
+#cam-strip .rep.clean { background: var(--success); }
+#cam-strip .rep.good { background: var(--info); }
+#cam-strip .rep.fix { background: var(--warning); }
+#cam-strip .rep.missed { background: rgba(255, 255, 255, 0.15); outline: 1px dashed rgba(255, 255, 255, 0.35); }
 
 #cam-actions { display: flex; gap: 10px; }
 #cam-actions:empty { display: none; }

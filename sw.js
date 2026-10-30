@@ -3,7 +3,7 @@
  * third-party requests to handle (§10). Bump CACHE_VERSION on every release.
  */
 
-const CACHE_VERSION = 'v2-a7';
+const CACHE_VERSION = 'v2-b1';
 const CACHE_NAME = `nak-muay-${CACHE_VERSION}`;
 
 const APP_ASSETS = [
@@ -35,6 +35,16 @@ const APP_ASSETS = [
   './js/screens/practice.js',
   './js/screens/angle-test.js',
   './js/coach/routine.js',
+  './js/coach/coach.js',
+  './js/screens/learn.js',
+  './js/technique/registry.js',
+  './js/technique/rep-detector.js',
+  './js/technique/form-eval.js',
+  './js/progression.js',
+  './data/techniques/stance.json',
+  './data/techniques/guard.json',
+  './data/techniques/jab.json',
+  './data/techniques/cross.json',
   './js/screens/settings.js',
   './assets/icons/icon-192.svg',
   './assets/icons/icon-512.svg',

@@ -49,7 +49,7 @@ export function sideMap(swapSides = false, stance = 'orthodox') {
 
 /**
  * A foot counts as seen if any of its ankle, heel or toe landmarks is.
- * From a front camera the heel is often hidden behind the foot, and models
+ * From a front camera the heel is often hidden behind the foot, and the model
  * is not equally confident about each point.
  */
 const L_FOOT_ANY = Object.freeze([LM.L_ANKLE, LM.L_HEEL, LM.L_FOOT]);
@@ -63,8 +63,12 @@ export const REQUIRED = Object.freeze({
   // Core torso only: wrists are deliberately excluded so a fast punch that
   // blurs a wrist can never trigger "Out of frame".
   upper: [LM.NOSE, LM.L_SHOULDER, LM.R_SHOULDER, LM.L_HIP, LM.R_HIP],
+  // Knees are not required: at a 30° placement the rear knee hovered at
+  // 0.4–0.57 visibility for seconds while the user stood fully in frame
+  // (angle-test log), holding "Out of frame" for 8 s. Feet + hips already
+  // prove the legs are in the picture.
   full:  [LM.NOSE, LM.L_SHOULDER, LM.R_SHOULDER, LM.L_HIP, LM.R_HIP,
-          LM.L_KNEE, LM.R_KNEE, L_FOOT_ANY, R_FOOT_ANY],
+          L_FOOT_ANY, R_FOOT_ANY],
 });
 
 /** Landmarks the framing check needs for "whole body visible" (§3.3). */

@@ -1,0 +1,32 @@
+{
+  "id": "cross",
+  "name": "Cross",
+  "group": "punch",
+  "kind": "strike",
+  "side": "rear",
+  "required_landmarks": "full",
+  "detectability": "M",
+  "callout": "Cross",
+  "key_points": [
+    { "text": "Rear hand straight to the target, driven by your back hip.", "highlight": "rear_hip" },
+    { "text": "Turn your back foot like you're squashing a bug.", "highlight": "rear_foot" }
+  ],
+  "checks": [
+    { "id": "other_hand_guard", "phase": "launch_to_return", "severity": "major", "detectability": "H",
+      "threshold": { "drop": 0.75, "min_conf": 0.4 },
+      "fault_text": "lead hand dropped", "cue": "Other glove stays on your chin", "praise": "Lead hand stayed up" },
+    { "id": "return_to_guard", "phase": "peak_to_return", "severity": "major", "detectability": "H",
+      "threshold": { "max_ms": 600 },
+      "fault_text": "slow back to guard", "cue": "Snap it straight back to your face", "praise": "Great snap back to guard" },
+    { "id": "rotation", "phase": "launch_to_peak", "severity": "major", "detectability": "M",
+      "threshold": { "min_deg": 25 },
+      "fault_text": "shoulders didn't turn", "cue": "Drive your rear hip toward the target", "praise": "Good hip and shoulder turn" },
+    { "id": "pivot", "phase": "launch_to_peak", "severity": "minor", "detectability": "M",
+      "threshold": { "min_deg": 35, "min_conf": 0.5 },
+      "fault_text": "back foot didn't pivot", "cue": "Squash the bug under your back foot", "praise": "Nice back-foot pivot" },
+    { "id": "extension", "phase": "peak", "severity": "minor", "detectability": "M",
+      "threshold": { "reach_fraction": 0.9 },
+      "fault_text": "arm not fully out", "cue": "Punch through the target", "praise": "Full extension" }
+  ],
+  "mastery": {}
+}

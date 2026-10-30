@@ -1,0 +1,27 @@
+{
+  "id": "stance",
+  "name": "Stance",
+  "group": "foundation",
+  "kind": "hold",
+  "side": "both",
+  "required_landmarks": "full",
+  "detectability": "M",
+  "callout": "Stance",
+  "hold_seconds": 20,
+  "key_points": [
+    { "text": "Feet about shoulder width, on railway tracks, not a tightrope.", "highlight": "feet" },
+    { "text": "Lead foot forward, weight centred, stand tall.", "highlight": "hips" }
+  ],
+  "checks": [
+    { "id": "lead_foot_forward", "severity": "major", "detectability": "M",
+      "threshold": { "min_forward": 0.2, "min_conf": 0.5, "ok_fraction": 0.8 },
+      "fault_text": "wrong foot forward", "cue": "Lead foot forward", "praise": "Right foot forward" },
+    { "id": "stance_width", "severity": "major", "detectability": "M",
+      "threshold": { "band": 0.35, "min_conf": 0.5, "ok_fraction": 0.8 },
+      "fault_text": "feet too close or too wide", "cue": "Feet on railway tracks, not a tightrope", "praise": "Good stance width" },
+    { "id": "upright", "severity": "minor", "detectability": "M",
+      "threshold": { "max_lean_change": 15, "ok_fraction": 0.8 },
+      "fault_text": "leaning", "cue": "Stand tall between your feet", "praise": "Nice and tall" }
+  ],
+  "mastery": {}
+}

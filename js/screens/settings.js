@@ -84,11 +84,11 @@ export class SettingsScreen {
 
         <section class="card">
           <h2>Your data</h2>
-          <p class="muted small">Settings and calibration numbers are stored on this phone only. No video, ever.</p>
+          <p class="muted small">Settings, calibration numbers, XP and mastery are stored on this phone only. No video, ever.</p>
           <button class="btn-danger" id="set-delete">Delete everything</button>
         </section>
 
-        <p class="muted small privacy">Nak Muay Trainer v2 · Phase A build</p>
+        <p class="muted small privacy">Nak Muay Trainer v2 · Phase B build</p>
       </div>
     `;
     this._bind();
@@ -148,7 +148,7 @@ export class SettingsScreen {
     });
 
     $('#set-delete').addEventListener('click', async () => {
-      if (!confirm('Delete all settings and calibration from this phone?')) return;
+      if (!confirm('Delete all settings, calibration, XP and progress from this phone?')) return;
       await this.settings.deleteEverything();
       this.log.clear();
       this.show();

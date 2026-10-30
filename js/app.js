@@ -12,6 +12,10 @@ import { HomeScreen } from './screens/home.js';
 import { SetupScreen } from './screens/setup.js';
 import { PracticeScreen } from './screens/practice.js';
 import { AngleTestScreen } from './screens/angle-test.js';
+import { LearnScreen } from './screens/learn.js';
+import { loadTechniques } from './technique/registry.js';
+import { Progression } from './progression.js';
+import { storage } from './storage.js';
 import { SettingsScreen } from './screens/settings.js';
 
 /* ── Event Bus ─────────────────────────────────────────────── */
@@ -102,13 +106,23 @@ async function boot() {
     const poseEngine = new PoseEngine();
     await poseEngine.init('full');
 
+    setProgress(80, 'Loading techniques…');
+    const techniques = await loadTechniques();
+    let progression = new Progression(await storage.get('progress').catch(() => null));
+    const saveProgress = () => storage.set('progress', progression.data).catch(() => {});
+    bus.on('data:deleted', () => { progression = new Progression(); });
+
     setProgress(85, 'Building UI…');
-    const deps = { bus, settings, voice, tones, poseEngine, log };
+    const deps = {
+      bus, settings, voice, tones, poseEngine, log, techniques,
+      progression: () => progression, saveProgress,
+    };
     const stage = new Stage(deps);
     const home = new HomeScreen(deps);
     const setup = new SetupScreen({ ...deps, stage });
     const practice = new PracticeScreen({ ...deps, stage });
     const angleTest = new AngleTestScreen({ ...deps, stage });
+    const learn = new LearnScreen({ ...deps, stage });
     const settingsScreen = new SettingsScreen(deps);
 
     let cameraController = null;
@@ -138,6 +152,12 @@ async function boot() {
       cameraController = practice;
       showScreen('camera');
       practice.open();
+    });
+    bus.on('navigate:learn', opts => {
+      leaveCamera({ keepCamera: true });
+      cameraController = learn;
+      showScreen('camera');
+      learn.open(opts);
     });
     bus.on('navigate:angle-test', opts => {
       leaveCamera({ keepCamera: true });

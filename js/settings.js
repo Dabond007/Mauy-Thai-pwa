@@ -72,6 +72,7 @@ export class Settings {
     this.calibration = null;
     this._bus.emit('settings:changed', { values: this.values });
     this._bus.emit('calibration:changed', null);
+    this._bus.emit('data:deleted');
   }
 }
 

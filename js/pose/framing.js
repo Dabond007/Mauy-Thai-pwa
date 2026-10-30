@@ -102,7 +102,7 @@ export function evaluateFraming(image, world = null, opts = FRAMING_DEFAULTS) {
     if (facing > 90) facing = 180 - facing;
     metrics.facingDeg = facing;
     if (facing > o.facingMaxDeg) {
-      issues.push({ id: 'facing', level: 'amber', tip: 'Face the phone' });
+      issues.push({ id: 'facing', level: 'amber', tip: 'Turn a little toward the phone' });
     }
   }
 
@@ -290,7 +290,10 @@ export class PresenceMonitor {
               events.push({ type: 'countdown', n: 3 });
             }
           }
-        } else {
+        } else if (lost) {
+          // Only a clear loss restarts the 1.5 s. A landmark hovering between
+          // the two thresholds (seen on the rear knee at a 30° placement)
+          // neither starts nor resets it.
           this._stableSince = null;
         }
         break;

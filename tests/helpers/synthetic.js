@@ -92,12 +92,16 @@ function rotateY(p, deg) {
  * @param {Object<number, number>} [o.vis]  per-landmark visibility overrides
  * @param {boolean} [o.swapLabels]      emulate a device whose L/R labels are swapped
  * @param {Object<number, number[]>} [o.move]  per-landmark world offsets [dx,dy,dz]
+ * @param {number} [o.cross]            0..1 rear hand to the target, with shoulder turn
+ * @param {number} [o.pivot]            rear-foot pivot in degrees (scaled by cross)
+ * @param {number} [o.turn]             shoulder/hip turn in degrees at full cross (default 45)
+ * @param {number} [o.dropRear]         0..1 rear hand drops from guard to the hip
  */
 export function frame(o = {}) {
   const {
     stance = 'orthodox', guard = true, raise = null, jab = 0,
     distance = 2.8, offsetX = 0, yaw = 0, visibility = 0.95, vis = {},
-    swapLabels = false, move = {},
+    swapLabels = false, move = {}, cross = 0, pivot = 0, turn = 45, dropRear = 0,
   } = o;
 
   const p = basePose({ stance, guard });
@@ -118,6 +122,44 @@ export function frame(o = {}) {
     const sh = p[leadSign === L ? LM.L_SHOULDER : LM.R_SHOULDER];
     const bend = 0.12 * (1 - jab);
     p[e] = [(sh[0] + p[w][0]) / 2 + 0.03 * leadSign * (1 - jab), (sh[1] + p[w][1]) / 2 + bend, (sh[2] + p[w][2]) / 2];
+  }
+
+  const leadSign = stance === 'southpaw' ? R : L;
+  const rearSign = -leadSign;
+  const rearIdx = rearSign === L
+    ? { sh: LM.L_SHOULDER, e: LM.L_ELBOW, w: LM.L_WRIST, a: LM.L_ANKLE, h: LM.L_HEEL, t: LM.L_FOOT }
+    : { sh: LM.R_SHOULDER, e: LM.R_ELBOW, w: LM.R_WRIST, a: LM.R_ANKLE, h: LM.R_HEEL, t: LM.R_FOOT };
+
+  if (dropRear > 0) {
+    const low = { w: [0.24 * rearSign, -0.05, -0.05], e: [0.24 * rearSign, -0.28, 0] };
+    p[rearIdx.w] = p[rearIdx.w].map((v, i) => v + (low.w[i] - v) * dropRear);
+    p[rearIdx.e] = p[rearIdx.e].map((v, i) => v + (low.e[i] - v) * dropRear);
+  }
+
+  if (cross > 0) {
+    // Upper body turns (rear shoulder forward), rear arm extends to the target.
+    const upper = [LM.NOSE, LM.L_SHOULDER, LM.R_SHOULDER, LM.L_ELBOW, LM.R_ELBOW, LM.L_WRIST, LM.R_WRIST];
+    const a = (-rearSign * turn * cross * Math.PI) / 180;
+    for (const k of upper) {
+      const [x, y, z] = p[k];
+      p[k] = [x * Math.cos(a) - z * Math.sin(a), y, x * Math.sin(a) + z * Math.cos(a)];
+    }
+    const sh = p[rearIdx.sh];
+    const ext = [0.02 * rearSign, -0.5, sh[2] - 0.6];
+    const g = p[rearIdx.w];
+    p[rearIdx.w] = g.map((v, i) => v + (ext[i] - v) * cross);
+    const bend = 0.12 * (1 - cross);
+    p[rearIdx.e] = [(sh[0] + p[rearIdx.w][0]) / 2 + 0.03 * rearSign * (1 - cross), (sh[1] + p[rearIdx.w][1]) / 2 + bend, (sh[2] + p[rearIdx.w][2]) / 2];
+    // Rear foot pivots about its ankle.
+    if (pivot) {
+      const b = (pivot * cross * Math.PI) / 180;
+      const an = p[rearIdx.a];
+      for (const k of [rearIdx.h, rearIdx.t]) {
+        const dx = p[k][0] - an[0];
+        const dz = p[k][2] - an[2];
+        p[k] = [an[0] + dx * Math.cos(b) - dz * Math.sin(b), p[k][1], an[2] + dx * Math.sin(b) + dz * Math.cos(b)];
+      }
+    }
   }
 
   for (const [k, d] of Object.entries(move)) {

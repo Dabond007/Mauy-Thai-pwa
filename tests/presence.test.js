@@ -97,7 +97,10 @@ test('a kick that blurs one ankle briefly does not trigger', () => {
 test('upper-body drills ignore the legs', () => {
   const m = new PresenceMonitor('upper');
   let { t } = acquire(m);
-  const noLegs = frame({ vis: { [LM.L_ANKLE]: 0.1, [LM.R_ANKLE]: 0.1, [LM.L_KNEE]: 0.1, [LM.R_KNEE]: 0.1 } }).image;
+  const noLegs = frame({ vis: {
+    [LM.L_ANKLE]: 0.1, [LM.R_ANKLE]: 0.1, [LM.L_KNEE]: 0.1, [LM.R_KNEE]: 0.1,
+    [LM.L_HEEL]: 0.1, [LM.R_HEEL]: 0.1, [LM.L_FOOT]: 0.1, [LM.R_FOOT]: 0.1,
+  } }).image;
   const [events] = feed(m, noLegs, t, 3000);
   assert.deepEqual(events, []);
 
@@ -123,4 +126,24 @@ test('lost again during the first countdown restarts acquisition silently', () =
   [events, t] = feed(m, null, t, 1500);
   assert.ok(!events.some(e => e.type === 'out_of_frame' || e.type === 'tracking'), JSON.stringify(events));
   assert.equal(m.state, PRESENCE.ACQUIRING);
+});
+
+test('a knee hovering at low visibility does not hold "Out of frame"', () => {
+  const m = new PresenceMonitor('full');
+  let { t } = acquire(m);
+  const knee = frame({ vis: { [LM.R_KNEE]: 0.45 } }).image;
+  const [events] = feed(m, knee, t, 5000);
+  assert.deepEqual(events, []);
+});
+
+test('resume is not reset by a landmark hovering between thresholds', () => {
+  const m = new PresenceMonitor('full');
+  let { t } = acquire(m);
+  let ev;
+  [ev, t] = feed(m, null, t, 2000);
+  const hover = frame({ vis: { [LM.R_ANKLE]: 0.55, [LM.R_HEEL]: 0.55, [LM.R_FOOT]: 0.55 } }).image;
+  // alternate good / hovering frames: should still resume after 1.5 s
+  const events = [];
+  for (let i = 0; i < 60; i++, t += 1000 / 30) events.push(...m.update(i % 2 ? hover : IN, t).events);
+  assert.ok(events.some(e => e.type === 'back_in_frame'));
 });

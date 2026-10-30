@@ -40,6 +40,7 @@ export class Stage {
       progress: document.getElementById('cam-progress'),
       progressFill: document.getElementById('cam-progress-fill'),
       detail: document.getElementById('cam-detail'),
+      strip: document.getElementById('cam-strip'),
       actions: document.getElementById('cam-actions'),
       cameraPrompt: document.getElementById('camera-prompt'),
       allowCamera: document.getElementById('allow-camera-btn'),
@@ -209,6 +210,26 @@ export class Stage {
     this.setProgress(progress);
     this.setTimer(timer);
     this.setActions(actions);
+    this.setStrip(null);
+  }
+
+  /**
+   * Row of rep results for the current set (§5.2).
+   * @param {Array<'clean'|'good'|'fix'|'missed'|null>|null} ratings  null hides it
+   * @param {number} total  slots to show
+   */
+  setStrip(ratings, total = 0) {
+    if (!ratings) {
+      this.el.strip.replaceChildren();
+      return;
+    }
+    const cells = [];
+    for (let i = 0; i < total; i++) {
+      const d = document.createElement('span');
+      d.className = `rep ${ratings[i] ?? 'todo'}`;
+      cells.push(d);
+    }
+    this.el.strip.replaceChildren(...cells);
   }
 
   setChip(text, level = 'info') {

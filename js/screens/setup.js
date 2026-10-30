@@ -26,11 +26,13 @@ export class SetupScreen {
   /**
    * @param {object} o
    * @param {boolean} [o.forceCalibrate]
-   * @param {'practice'|'home'} [o.next]  where to go once setup is done
+   * @param {string} [o.next]      screen to go to once setup is done ('home' shows a summary)
+   * @param {object} [o.nextOpts]  passed on to that screen (e.g. { technique })
    */
-  async open({ forceCalibrate = false, next = 'practice' } = {}) {
+  async open({ forceCalibrate = false, next = 'practice', nextOpts = {} } = {}) {
     this._forceCalibrate = forceCalibrate;
     this._next = next;
+    this._nextOpts = nextOpts;
     this._phase = 'framing';
     this._calibrator = null;
     this._lastStep = null;
@@ -60,13 +62,18 @@ export class SetupScreen {
 
   _enterFraming() {
     this.stage.drawOpts.guide = true;
+    // Placement (spec §3.1): ~30° off the line you punch along, on your
+    // rear-hand side, so straight punches travel partly across the picture.
+    const side = this.settings.calibration?.stance === 'southpaw' ? 'left' : 'right';
     this.stage.setPanel({
       chip: CHIP.red[0], chipLevel: 'red',
-      prompt: 'Prop the phone up at waist height, then stand about 3 metres back.',
-      detail: this._landscapeWarning() ?? 'Match the outline: whole body in view, feet included.',
+      prompt: `Phone at waist height, 3 m in front of you and 1.5 m to your ${side}.`,
+      detail: this._landscapeWarning() ??
+        'Face a spot on the wall (your opponent), not the phone. Whole body in view, feet included.',
       progress: 0,
     });
-    this.voice.say('Prop the phone up at waist height. Stand about three metres back so I can see all of you.');
+    this.voice.say(`Prop the phone at waist height, three metres in front of you and a metre and a half to your ${side}. ` +
+      'Face a spot on the wall, not the phone.');
   }
 
   /** Diagnostic: the camera should give a portrait picture on a portrait phone. */
@@ -231,9 +238,9 @@ export class SetupScreen {
   // ── Done ──────────────────────────────────────────────────
 
   _finish(calibrated) {
-    if (this._next === 'practice') {
+    if (this._next !== 'home') {
       this._phase = null;
-      this.bus.emit('navigate:practice');
+      this.bus.emit(`navigate:${this._next}`, this._nextOpts);
       return;
     }
     this._phase = 'done';

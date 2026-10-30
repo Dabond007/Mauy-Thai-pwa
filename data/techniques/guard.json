@@ -1,0 +1,24 @@
+{
+  "id": "guard",
+  "name": "Guard",
+  "group": "foundation",
+  "kind": "hold",
+  "side": "both",
+  "required_landmarks": "upper",
+  "detectability": "H",
+  "callout": "Guard up",
+  "hold_seconds": 20,
+  "key_points": [
+    { "text": "Gloves up by your eyebrows, close to your face.", "highlight": "hands" },
+    { "text": "Elbows in, like holding a towel against your ribs.", "highlight": "elbows" }
+  ],
+  "checks": [
+    { "id": "hands_up", "severity": "major", "detectability": "H",
+      "threshold": { "drop": 0.5, "min_conf": 0.4, "ok_fraction": 0.8 },
+      "fault_text": "hands dropped", "cue": "Gloves by your eyebrows", "praise": "Hands stayed up" },
+    { "id": "elbows_in", "severity": "minor", "detectability": "M",
+      "threshold": { "max_out": 0.35, "min_conf": 0.5, "ok_fraction": 0.8 },
+      "fault_text": "elbows flared", "cue": "Elbows in, like holding a towel against your ribs", "praise": "Elbows tucked in" }
+  ],
+  "mastery": {}
+}

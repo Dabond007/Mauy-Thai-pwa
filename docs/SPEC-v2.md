@@ -59,11 +59,24 @@ v1 made a working app, but in use it felt **glitchy and like a hitbox game rathe
 ## 3. Setup, camera placement and framing check
 
 ### 3.1 Recommended placement
-- Phone in **portrait**, propped at roughly **waist height**, facing you straight on.
-- You stand about **2.5–3 m** away so your whole body, including feet, is in frame with room to kick.
+- Phone in **portrait**, propped at roughly **waist height**.
+- **About 30° off the line you strike along, on your rear-hand side** (right for orthodox, left for southpaw): roughly 3 m in front of you and 1.5 m to the side. You face a spot on the wall, your imaginary opponent, not the phone.
+- Your whole body, including feet, is in frame with room to kick.
 - Even, front-facing light; avoid a bright window behind you.
 
-The research found no direct frontal-vs-45° benchmark for BlazePose, but it does show accuracy depends heavily on viewing angle (§A). v2 keeps your straight-on setup as the primary, supported placement, because a Muay Thai stance is fairly square to the opponent anyway. A 45° placement is a possible later experiment, not a requirement.
+**Changed in Phase A (October 2026).** v2 started with a straight-on placement, and on-device logs showed why it doesn't work for straight strikes. A jab thrown straight at the phone moved the 3D reach only 0.05–0.15 shoulder widths. A fully extended arm read 122–137° at the elbow. The jab step in calibration took up to 41 s for three jabs.
+
+Expert motion capture placed at virtual angles (`docs/research/camera-angle.md`) showed why:
+- **Straight on**, only 20–32% of a jab or cross travels across the picture.
+- **At 30°**, about half does.
+- **At 45°**, 67–83% does.
+
+The user's 30° angle-test log confirmed it on the phone:
+- lead elbow at jab peak read 137–152°
+- reach was about 45% larger
+- the rep detector found 15 of 16 called-out jabs and crosses and labelled every one correctly
+
+The rear-hand side keeps the chest and both gloves toward the phone, which the guard checks need. The user chose 30° over 45°. Kicks and uppercuts are well visible at any angle.
 
 ### 3.2 Camera configuration
 | Constraint | Value | Why |
@@ -86,7 +99,7 @@ The framing check computes a **status** (green / amber / red) and gives **one sp
 | Edge margin | No required landmark within 3 % of a frame edge | "Give yourself room to kick — step back" |
 | Camera tilt | Heels near the bottom edge with large headroom, or the reverse | "Tilt the phone down/up a bit" |
 | Lighting | Mean visibility of required landmarks < 0.7 for 2 s | "More light would help" |
-| Facing | Torso facing estimated from world-landmark shoulder vector is within ±50° of the camera | "Face the phone" |
+| Facing | Torso facing estimated from world-landmark shoulder vector is within ±50° of the camera (at the 30° placement the torso reads ~25°) | "Turn a little toward the phone" |
 
 - **Red** (required landmarks missing) blocks starting. **Amber** allows starting with a warning. **Green** starts immediately.
 - All values are starting points to tune on device (§12).
@@ -175,7 +188,9 @@ Before anything is Solid, blocks 4–5 are skipped and the session is shorter.
 2. **Set**: a soft cue tick asks for each rep. Tempo starts slow (one cue every ~3 s, waiting for you to return to guard) and tightens toward ~1.8 s as the set goes well. A rep is never marked missed for being slow in Learn mode; it is "missed" only if you don't attempt within 4 s.
 3. **During the set**: per-rep tone (§8.2). Voice only for guard-down and frame events.
 4. **Summary** (during rest): e.g. *"Seven of eight clean. Great snap back to guard. Next set: keep your rear glove glued to your cheek."* On screen: a strip of the 8 reps (clean / good / fix / missed) and the top fault with its cue.
-5. **Again / Next**. After 3 sets, mastery updates.
+5. **Next set**: after a 25 s rest the next set starts by itself, because the user is ~3 m from the phone. **Next set** and **End** buttons are optional. After 3 sets, mastery updates.
+
+**Hold techniques (Stance, Guard)** use the same flow, with a 20 s hold per set judged in ten 2 s windows. Each window counts as a rep for ratings, XP, summaries and mastery. Until the stick-figure demos arrive (Phase C), the demo step is the key points, spoken and shown as text.
 
 ### 5.3 Drill mode flow (combos)
 1. Voice announces the whole combo: *"Jab, cross, low kick."*
@@ -229,10 +244,10 @@ The user is a beginner, so v2 picks the checks from common beginner errors repor
 | Technique | Check | Sev. | Det. | Cue |
 |---|---|---|---|---|
 | Jab, Cross | Arm reaches full extension at peak: wrist reach ≥ ~90 % of the calibrated reach (§7.2). Until reach is calibrated, the check reports unknown. (Phase A data: a full jab straight at the front camera read only ~125–135° elbow angle in world landmarks, so a fixed 150° threshold would fail every jab.) | Minor | M | "Punch through the target" |
-| Jab | Rear hand stays at guard during the punch | Major | H | "Rear glove glued to your cheek" |
+| Jab | Rear hand stays at guard during the punch: no more than 0.75 shoulder widths below calibrated guard height (the user's 30° log: drops of 0.8–1.3 on 7 of 8 jabs) | Major | H | "Rear glove glued to your cheek" |
 | All punches | Return to guard within ~0.6 s of peak | Major | H | "Snap it straight back to your face" |
-| Cross | Shoulders and hips rotate (world shoulder line turns ≥ ~25°) | Major | M | "Drive your rear hip toward the target" |
-| Cross | Rear heel lifts/pivots | Minor | M | "Squash the bug under your back foot" |
+| Cross | Shoulders and hips rotate: world shoulder line turns ≥ ~25°, measured from 400 ms before launch, since the hips start first. Unknown when the rep follows another too closely to have a clean "before". | Major | M | "Drive your rear hip toward the target" |
+| Cross | Rear foot pivots: heel→toe direction turns ≥ ~35° (experts 57–70°; the user's typical turn was ~35°, `docs/research/technique-qualities.md`) | Minor | M | "Squash the bug under your back foot" |
 | Cross | No wind-up (wrist doesn't move backward before launch) | Minor | M | "Fire straight from your chin — no pulling back" |
 | Cross, hooks, uppercuts | Non-punching hand stays at guard | Major | H | "Other glove stays on your chin" |
 | Hooks | Elbow bent ~90° and raised near shoulder height at peak | Minor | M | "Make a hook shape — elbow up level with your fist" |
@@ -324,6 +339,12 @@ any ──(no progress for 2 s)──▶ GUARD (rep abandoned)
 ```
 
 - **Identification**: when a rep completes, the detector scores it against every technique in the current pool (which limb launched, path shape, peak geometry) and labels it with the best match and a confidence. A rep that matches a different technique better than the expected one is "wrong technique", not a hit.
+- **Straight punches (Phase B implementation)**: each arm has an *extension* score, where 0 = guard and 1 = calibrated full punch. The score is the larger of two measures, because the camera reads depth poorly and either cue can carry the punch:
+  - the reach gain over the calibrated reach gain
+  - the elbow opening over the calibrated elbow opening
+
+  The score counts only while the wrist is no more than 0.5 shoulder widths below its shoulder, so dropping a hand can never become a punch. A rep starts at extension 0.45 and completes when both arms are back below 0.35. The punching arm must reach 0.75. The arm with the larger peak extension threw it: lead = jab, rear = cross.
+- **Tracking glitches**: frames where a torso point jumps more than 0.35 torso lengths in one frame are replaced by the previous good frame, for up to 4 frames. Seen mid-cross in the 30° log.
 - **Form evaluation** runs on the completed rep, with checks evaluated at the phase where they apply (e.g. "rear hand at guard" sampled during LAUNCH→PEAK; "return to guard" timed from PEAK).
 - **Idle safety**: standing still or shifting weight must never produce a rep. Exit criterion: zero reps from 60 s of idle stance (§13).
 
