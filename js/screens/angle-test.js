@@ -120,7 +120,8 @@ export class AngleTestScreen {
   }
 
   _onAction(a, t) {
-    this.log.event('routine', a, t);
+    const { type, ...rest } = a;          // keep the event's own type as 'routine'
+    this.log.event('routine', { action: type, ...rest }, t);
     switch (a.type) {
       case 'step':
         this.stage.setChip(`Step ${a.index + 1} of ${this._routine.steps.length}`, 'green');
